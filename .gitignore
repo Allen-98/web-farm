@@ -1,0 +1,26 @@
+node_modules/
+.vite/
+*.log
+
+# Local history, reference-video analysis, and personal verification records.
+backups/
+docs/reference/
+verification/*
+!verification/*.mjs
+!verification/playtest.html
+!verification/playtest.ts
+!verification/*-checkpoints.json
+
+# Local configuration, credentials, and release archives.
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.pfx
+id_rsa
+id_ed25519
+*.save.json
+*.zip
+.DS_Store
+Thumbs.db

@@ -1,0 +1,39 @@
+{
+  "area": {"x":42,"z":1,"width":19,"height":17},
+  "maxX":60.5,
+  "field":{"x":43,"z":2,"rows":5,"columns":5,"regrowSeconds":8},
+  "mill":{"wheat":3,"seconds":2},
+  "oven":{"flour":2,"egg":2,"seconds":4},
+  "retail":{"seconds":2.5,"price":40},
+  "points":{
+    "gate":{"x":40,"z":12.5},
+    "millInput":{"x":44,"z":15},
+    "flourOutput":{"x":48,"z":14},
+    "flourInput":{"x":51.5,"z":8.5},
+    "eggInput":{"x":53,"z":9.5},
+    "cakeOutput":{"x":56,"z":8},
+    "cakeSupply":{"x":52,"z":17},
+    "cash":{"x":59,"z":16.5}
+  },
+  "buildings":[
+    {"id":"mill","x":44.5,"z":10.5,"width":3,"height":2,"center":{"x":46,"z":12}},
+    {"id":"oven","x":52.5,"z":4.5,"width":3,"height":2,"center":{"x":54,"z":5.5}},
+    {"id":"cake_stall","x":53.5,"z":14,"width":3,"height":1.5,"center":{"x":55,"z":15}}
+  ],
+  "upgrades":[
+    {"id":"bakery_land","label":"开辟烘焙工坊","cost":700,"requires":["packer"],"position":{"x":40,"z":12.5}},
+    {"id":"wheat_field","label":"开垦小麦田","cost":300,"requires":["bakery_land"],"position":{"x":42.5,"z":12}},
+    {"id":"mill","label":"建造磨坊","cost":450,"requires":["wheat_field"],"position":{"x":43,"z":16.5}},
+    {"id":"oven","label":"建造蛋糕烤炉","cost":650,"requires":["mill"],"position":{"x":50,"z":11.5}},
+    {"id":"cake_stall","label":"开设蛋糕摊","cost":750,"requires":["oven"],"position":{"x":51,"z":16.5}}
+  ],
+  "automation":[
+    {"id":"egg_courier","label":"跨区运蛋员","cost":180,"requires":["pack_table"],"position":{"x":27,"z":12},"job":"egg_courier","description":"从鸡舍运蛋，按缺货情况补给旧柜台、包装台和烤炉"},
+    {"id":"gift_courier","label":"礼盒配送员","cost":220,"requires":["gift_stall"],"position":{"x":31,"z":12},"job":"gift_courier","description":"取礼盒，轮流补给礼盒摊和批发货车"},
+    {"id":"bank_atm","label":"建造 ATM","cost":250,"requires":["market_land"],"position":{"x":24.5,"z":16.8},"job":"","description":"现金转为可直接建设、招聘的余额，停止背负现金高塔"},
+    {"id":"cashier","label":"巡回收款员","cost":300,"requires":["bank_atm"],"position":{"x":25,"z":15.4},"job":"cashier","description":"巡回领取各区货款，送回 ATM，自动存入余额"},
+    {"id":"wheat_farmer","label":"麦农","cost":250,"requires":["mill"],"position":{"x":46,"z":8.5},"job":"wheat_farmer","description":"收割成熟小麦，成批送进磨坊"},
+    {"id":"baker","label":"烘焙师","cost":350,"requires":["oven"],"position":{"x":51,"z":11},"job":"baker","description":"把磨坊面粉运到烤炉，缺蛋时支援跨区运蛋"},
+    {"id":"cake_courier","label":"蛋糕配送员","cost":280,"requires":["cake_stall"],"position":{"x":53,"z":16.5},"job":"cake_courier","description":"取出烤好的蛋糕，送到蛋糕摊销售"}
+  ]
+}

@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#315737"><meta name="description" content="收割、搬运、喂鸡、卖蛋，一点点建起自己的小农场。"><title>田园小掌柜 · Farm & Flow</title>  <script type="module" crossorigin src="./assets/index-BAdz7fdD.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-Cp9K78FL.css">
+</head><body>
+<main id="app"><div id="game" aria-label="农场游戏画面"></div>
+<header class="topbar"><div class="brand"><span class="brand-icon">✿</span><div><b>田园小掌柜</b><small>FARM & FLOW</small></div></div><div class="top-actions"><div class="wallet" aria-label="钱包"><span class="money-icon">$</span><div><strong id="cash">0</strong><small id="money-label">现金</small></div></div><button id="staff" class="staff-button">雇员</button><button id="pause" class="icon-button" aria-label="暂停游戏">Ⅱ</button></div></header>
+<button id="goal" class="goal"><span class="goal-kicker" id="stage">从一块田开始</span><strong id="goal-title">领取启动资金</strong><span class="goal-footer"><i></i><span id="goal-detail">点击前往 · 靠近后自动收取</span><b>↗</b></span></button>
+<div id="chapter-info" hidden></div>
+<nav id="map-controls" aria-label="地图视野"><button id="zoom-in" aria-label="放大地图">＋</button><output id="zoom-level" aria-label="地图缩放比例">100%</output><button id="zoom-out" aria-label="缩小地图">−</button><button id="map-overview" aria-pressed="false" title="以 57% 视野浏览地图，拖动查看其他区域，再点返回跟随">总览</button></nav>
+<p id="map-tip" hidden>总览中拖动地图 · 滚轮或 ＋ / − 缩放</p>
+<div id="toast" role="status" aria-live="polite"></div>
+<div id="joystick" role="application" aria-label="拖动摇杆移动"><div class="joystick-ring"><div id="stick"></div></div><span>移动</span></div>
+<div class="cargo"><div><span>背包</span><b id="cargo-count">0 <small>/ 60</small></b></div><div class="cargo-track"><i id="cargo-fill"></i></div><p><span class="corn-dot"></span><span id="corn">0</span><span class="egg-dot"></span><span id="eggs">0</span><span id="gift-slot" hidden><i class="gift-dot"></i><span id="gifts">0</span></span></p></div>
+<p id="bakery-cargo" hidden></p><div id="help-hint">拖动移动 · 点击地面前往 · 靠近自动工作</div>
+<div id="context" aria-live="polite"></div>
+<dialog id="menu"><div class="menu-heading"><span>✿</span><p>休息一下</p><h1>小农场等你回来</h1></div><p class="menu-copy">拖动摇杆或用 WASD 移动。走近玉米自动收割，把玉米送到喂料点，再把鸡蛋搬到柜台。现金需要走到绿色收钱点领取。第二章：把鸡蛋送进包装台，取礼盒供给新摊位或装满批发货车。点击左上目标可以自动前往。</p><button id="resume" class="primary">继续经营</button><button id="sound">声音：关闭</button><button id="reset">开始新的农场</button><p id="save-status">进度自动保存在此浏览器</p><a href="https://zhaocai7.cn/#works">返回游戏主页 ↗</a></dialog>
+<dialog id="staff-menu"><div class="staff-heading"><div><small>FARM MANAGEMENT</small><h2>农场经营</h2></div><button id="staff-close" aria-label="关闭雇员面板">×</button></div><p id="staff-balance"></p><div class="management-tabs" role="tablist" aria-label="经营分类"><button id="staff-tab" role="tab" aria-controls="staff-panel" aria-selected="true">雇员与设施</button><button id="capacity-tab" role="tab" aria-controls="capacity-panel" aria-selected="false">原料产能</button></div><section id="staff-panel" role="tabpanel" aria-labelledby="staff-tab"><button id="staff-collect">前往领取货款</button><div id="staff-options"></div><h3>在岗员工</h3><div id="staff-roster"></div><p class="staff-note">店员会跨区供蛋；各加工岗位可分别招聘。收款员领取货款后送回 ATM，建设直接使用余额。</p></section><section id="capacity-panel" role="tabpanel" aria-labelledby="capacity-tab" hidden><div id="capacity-summary"></div><div id="capacity-options"></div><p class="staff-note">理论产能按满负荷计算，实际受成熟时间、搬运路程和下游需求影响。每产一枚鸡蛋仍消耗一份玉米；升级增加产能和仓容，不赠送原料。升级后已有员工同步使用更大背包和批次。</p></section></dialog>
+<pre id="debug-state" hidden></pre><div id="loading"><div class="loading-flower">✿</div><b>正在打开你的小农场</b><span>播下一点期待，收获一整天好心情</span></div>
+</main></body></html>

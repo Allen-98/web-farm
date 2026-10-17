@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "status": "playable_v1_layout_not_measured_from_video",
+  "walkBounds": { "minX": 6.6, "maxX": 25, "minZ": 1.2, "maxZ": 18.3 },
+  "staticBlockers": [{ "id": "coop", "x": 7.65, "z": 2.65, "width": 6.7, "height": 3.7 }],
+  "coordinateSystem": { "plane": ["x", "z"], "unit": "meter", "bounds": { "x": 0, "z": 0, "width": 26, "height": 22 } },
+  "playerSpawn": { "x": 12, "z": 14 },
+  "areas": [
+    { "id": "corn_field", "x": 16, "z": 2, "width": 8, "height": 8, "role": "crop", "rows": 8, "columns": 6 },
+    { "id": "coop", "x": 8, "z": 3, "width": 6, "height": 3, "role": "building_obstacle" },
+    { "id": "egg_ground", "x": 8, "z": 7, "width": 6, "height": 4, "role": "output" },
+    { "id": "car_road", "x": 1, "z": 1, "width": 5, "height": 19, "role": "customer_only" },
+    { "id": "car_counter", "x": 7, "z": 13, "width": 5, "height": 1, "role": "station", "requires": "car_counter" },
+    { "id": "walk_counter", "x": 19, "z": 17, "width": 5, "height": 1, "role": "station", "requires": "walk_counter" },
+    { "id": "walk_road", "x": 14, "z": 19, "width": 11, "height": 2, "role": "customer_only" }
+  ],
+  "interactionZones": [
+    { "id": "feed", "kind": "feed", "x": 15, "z": 5, "radius": 0.8 },
+    { "id": "car_supply", "kind": "supply", "x": 13, "z": 11.7, "radius": 0.75, "requires": "car_counter" },
+    { "id": "car_cash", "kind": "collect_cash", "x": 13, "z": 14, "radius": 0.65, "requires": "car_counter" },
+    { "id": "walk_supply", "kind": "supply", "x": 18, "z": 16.5, "radius": 0.75, "requires": "walk_counter" },
+    { "id": "walk_cash", "kind": "collect_cash", "x": 24, "z": 16, "radius": 0.65, "requires": "walk_counter" }
+  ],
+  "investmentZones": [
+    { "upgradeId": "car_counter", "x": 9, "z": 15, "radius": 0.7 },
+    { "upgradeId": "harvest_team", "x": 18, "z": 12, "radius": 0.7 },
+    { "upgradeId": "car_clerk", "x": 11, "z": 15, "radius": 0.7 },
+    { "upgradeId": "walk_counter", "x": 18, "z": 16, "radius": 0.7 },
+    { "upgradeId": "walk_expansion", "x": 16.5, "z": 15, "radius": 0.7 },
+    { "upgradeId": "harvester", "x": 23, "z": 12, "radius": 0.7 },
+    { "upgradeId": "walk_clerk", "x": 22, "z": 14, "radius": 0.7 }
+  ],
+  "customerPaths": {
+    "car": [{ "x": 3, "z": 1 }, { "x": 3, "z": 13 }, { "x": 3, "z": 20 }],
+    "walk": [{ "x": 25, "z": 20 }, { "x": 21, "z": 20 }, { "x": 14, "z": 20 }]
+  },
+  "notes": ["Playable semantic layout. walkBounds and staticBlockers are simulation geometry; enabled station rectangles add dynamic blockers.", "Render with IsoProjector; do not treat projected screen rectangles as collision geometry."]
+}

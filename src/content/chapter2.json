@@ -1,0 +1,156 @@
+{
+  "area": {
+    "x": 26,
+    "z": 1,
+    "width": 15,
+    "height": 17
+  },
+  "bounds": {
+    "maxX": 40.5
+  },
+  "recipe": {
+    "eggs": 6,
+    "seconds": 2.4,
+    "inputCapacity": 120,
+    "outputCapacity": 36
+  },
+  "retail": {
+    "capacity": 36,
+    "seconds": 2,
+    "price": 20
+  },
+  "wholesale": {
+    "boxes": 12,
+    "price": 300,
+    "returnSeconds": 12
+  },
+  "points": {
+    "gate": {
+      "x": 24.5,
+      "z": 12.5
+    },
+    "input": {
+      "x": 28,
+      "z": 9
+    },
+    "output": {
+      "x": 31,
+      "z": 8
+    },
+    "supply": {
+      "x": 31.5,
+      "z": 16
+    },
+    "cash": {
+      "x": 39,
+      "z": 15.5
+    },
+    "loading": {
+      "x": 33,
+      "z": 7
+    },
+    "truckCash": {
+      "x": 38,
+      "z": 9.5
+    }
+  },
+  "buildings": [
+    {
+      "id": "pack_table",
+      "x": 28,
+      "z": 4.5,
+      "width": 3,
+      "height": 2,
+      "center": {
+        "x": 29.5,
+        "z": 5.5
+      }
+    },
+    {
+      "id": "gift_stall",
+      "x": 34.5,
+      "z": 13,
+      "width": 3,
+      "height": 1.5,
+      "center": {
+        "x": 35.5,
+        "z": 14
+      }
+    },
+    {
+      "id": "wholesale",
+      "x": 36,
+      "z": 4.5,
+      "width": 3.5,
+      "height": 2,
+      "center": {
+        "x": 37.5,
+        "z": 5.5
+      }
+    }
+  ],
+  "upgrades": [
+    {
+      "id": "market_land",
+      "label": "买下集市新地块",
+      "cost": 400,
+      "requires": [
+        "walk_clerk"
+      ],
+      "position": {
+        "x": 24.5,
+        "z": 12.5
+      }
+    },
+    {
+      "id": "pack_table",
+      "label": "建造鸡蛋包装台",
+      "cost": 180,
+      "requires": [
+        "market_land"
+      ],
+      "position": {
+        "x": 27,
+        "z": 10.5
+      }
+    },
+    {
+      "id": "gift_stall",
+      "label": "开设礼盒摊",
+      "cost": 220,
+      "requires": [
+        "pack_table"
+      ],
+      "position": {
+        "x": 30,
+        "z": 14.5
+      }
+    },
+    {
+      "id": "wholesale",
+      "label": "开通批发货车",
+      "cost": 320,
+      "requires": [
+        "gift_stall"
+      ],
+      "milestone": "retail",
+      "position": {
+        "x": 34,
+        "z": 11
+      }
+    },
+    {
+      "id": "packer",
+      "label": "雇佣包装工",
+      "cost": 420,
+      "requires": [
+        "wholesale"
+      ],
+      "milestone": "truck",
+      "position": {
+        "x": 28,
+        "z": 13
+      }
+    }
+  ]
+}

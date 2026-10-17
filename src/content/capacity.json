@@ -1,0 +1,90 @@
+{
+  "upgrades": [
+    {
+      "id": "corn_1",
+      "label": "玉米增产 I",
+      "cost": 250,
+      "requires": [
+        "pack_table",
+        "harvester"
+      ],
+      "position": {
+        "x": 21,
+        "z": 1.2
+      },
+      "description": "每株 2 份 · 玉米理论 16 份/秒；同步扩容收割机、饲料仓和运输背包"
+    },
+    {
+      "id": "coop_1",
+      "label": "鸡舍扩建 I",
+      "cost": 300,
+      "requires": [
+        "pack_table",
+        "corn_1"
+      ],
+      "position": {
+        "x": 11,
+        "z": 4.5
+      },
+      "description": "12 只鸡 · 理论 8 枚/秒；扩大集蛋区与运蛋批次"
+    },
+    {
+      "id": "corn_2",
+      "label": "玉米增产 II",
+      "cost": 650,
+      "requires": [
+        "wholesale",
+        "corn_1"
+      ],
+      "position": {
+        "x": 21,
+        "z": 1.2
+      },
+      "description": "每株 3 份 · 玉米理论 24 份/秒；继续提升饲料运输效率"
+    },
+    {
+      "id": "coop_2",
+      "label": "鸡舍扩建 II",
+      "cost": 750,
+      "requires": [
+        "wholesale",
+        "coop_1",
+        "corn_2"
+      ],
+      "position": {
+        "x": 11,
+        "z": 4.5
+      },
+      "description": "18 只鸡 · 理论 12 枚/秒；支撑柜台、礼盒和烘焙同时生产"
+    },
+    {
+      "id": "corn_3",
+      "label": "玉米增产 III",
+      "cost": 1200,
+      "requires": [
+        "oven",
+        "corn_2"
+      ],
+      "position": {
+        "x": 21,
+        "z": 1.2
+      },
+      "description": "每株 4 份 · 玉米理论 32 份/秒；饲料仓 480、运输背包 80"
+    },
+    {
+      "id": "coop_3",
+      "label": "鸡舍扩建 III",
+      "cost": 1400,
+      "requires": [
+        "oven",
+        "coop_2",
+        "corn_3"
+      ],
+      "position": {
+        "x": 11,
+        "z": 4.5
+      },
+      "description": "24 只鸡 · 理论 16 枚/秒；集蛋区 720、运蛋批次 64"
+    }
+  ]
+}

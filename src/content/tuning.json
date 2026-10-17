@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "status": "playable_v1",
+  "platform": { "first": "browser", "renderer": "phaser", "orientation": "portrait", "future": ["unity", "wechat"] },
+  "simulation": { "tickHz": 30, "maxCatchupTicks": 5, "offlineProgress": false },
+  "player": { "moveMetersPerSecond": 4, "inventoryCapacity": 60, "harvestSeconds": 0.08, "feedPerSecond": 12, "pickupPerSecond": 16, "unloadPerSecond": 16, "collectCashPerSecond": 60, "investCashPerSecond": 40, "investmentDwellSeconds": 0.25 },
+  "farm": { "cropRows": 8, "cropColumns": 6, "cropYield": 1, "regrowSeconds": 6, "chickenCount": 6, "cornPerEgg": 1, "eggPerCycle": 1, "productionSecondsPerChicken": 1.5, "feedCapacity": 120, "eggGroundCapacity": 180 },
+  "stations": [
+    { "id": "car_counter", "eggCapacity": 120, "eggsPerPack": 6, "cashPerPack": 10, "serviceSecondsPerPack": 2.5, "orderPacks": [1, 2] },
+    { "id": "walk_counter", "eggCapacity": 120, "eggsPerPack": 4, "cashPerPack": 8, "serviceSecondsPerPack": 1.2, "orderPacks": [1] }
+  ],
+  "bootstrap": { "wallet": 0, "looseCash": 50 },
+  "upgrades": [
+    { "id": "car_counter", "cost": 50, "requires": [], "effect": "enable_car_counter" },
+    { "id": "harvest_team", "cost": 70, "requires": ["car_counter"], "effect": "spawn_three_harvesters" },
+    { "id": "car_clerk", "cost": 70, "requires": ["harvest_team"], "effect": "enable_car_clerk" },
+    { "id": "walk_counter", "cost": 100, "requires": ["car_clerk"], "effect": "enable_walk_counter" },
+    { "id": "walk_expansion", "cost": 50, "requires": ["walk_counter"], "effect": "expand_walk_counter" },
+    { "id": "harvester", "cost": 150, "requires": ["walk_expansion"], "effect": "enable_mechanical_harvest" },
+    { "id": "walk_clerk", "cost": 60, "requires": ["harvester"], "effect": "enable_walk_clerk" }
+  ],
+  "workers": { "harvesterCount": 3, "targetCornPerWorkerPerSecond": 1, "machineTargetCornPerSecond": 8, "clerkCollectsCash": false },
+  "rendering": { "maxVisibleStackLayers": 36, "logicalWidthMeters": 26, "logicalHeightMeters": 22 },
+  "provenance": { "allValues": "prototype_design_values_not_recovered_source_parameters", "clearVideoCostReferences": { "initialCounter": 50, "harvestTeam": 70, "firstClerk": 70 } }
+}
