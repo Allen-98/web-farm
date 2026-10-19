@@ -1,3 +1,4 @@
+import {cycleSeconds} from './operations.ts';
 import config from '../content/chapter3.json' with {type:'json'};
 import { inventoryUsed, transferItems } from './economy.ts';
 import { has } from './chapter2.ts';
@@ -49,9 +50,9 @@ export function bakeryInteract(w:World,mode:string,n:number,fx:Fx):void {
 }
 export function updateBakery(w:World,dt:number,fx:Fx):void {
   const b=w.bakery,p=config.points;
-  if(has(w,'mill')&&b.millInput.items.wheat>=config.mill.wheat&&inventoryUsed(b.flour)<b.flour.capacity){b.millTime+=dt;if(b.millTime>=config.mill.seconds){b.millTime=0;b.millInput.items.wheat-=config.mill.wheat;b.flour.items.flour++;b.milled++;fx('flour',1,p.millInput,p.flourOutput);}}
-  if(has(w,'oven')&&b.ovenFlour.items.flour>=config.oven.flour&&b.ovenEgg.items.egg>=config.oven.egg&&inventoryUsed(b.cakes)<b.cakes.capacity){b.ovenTime+=dt;if(b.ovenTime>=config.oven.seconds){b.ovenTime=0;b.ovenFlour.items.flour-=config.oven.flour;b.ovenEgg.items.egg-=config.oven.egg;b.cakes.items.cake++;b.baked++;fx('cake',1,p.eggInput,p.cakeOutput);}}
-  if(has(w,'cake_stall')&&b.stock.items.cake){b.saleTime+=dt;if(b.saleTime>=config.retail.seconds){b.saleTime=0;b.stock.items.cake--;b.sold++;b.pendingCash+=config.retail.price;w.stats.earned+=config.retail.price;fx('cash',config.retail.price,p.cakeSupply,p.cash);}}
+  if(has(w,'mill')&&b.millInput.items.wheat>=config.mill.wheat&&inventoryUsed(b.flour)<b.flour.capacity){b.millTime+=dt;if(b.millTime>=cycleSeconds(w,'mill')){b.millTime=0;b.millInput.items.wheat-=config.mill.wheat;b.flour.items.flour++;b.milled++;fx('flour',1,p.millInput,p.flourOutput);}}
+  if(has(w,'oven')&&b.ovenFlour.items.flour>=config.oven.flour&&b.ovenEgg.items.egg>=config.oven.egg&&inventoryUsed(b.cakes)<b.cakes.capacity){b.ovenTime+=dt;if(b.ovenTime>=cycleSeconds(w,'oven')){b.ovenTime=0;b.ovenFlour.items.flour-=config.oven.flour;b.ovenEgg.items.egg-=config.oven.egg;b.cakes.items.cake++;b.baked++;fx('cake',1,p.eggInput,p.cakeOutput);}}
+  if(has(w,'cake_stall')&&b.stock.items.cake){b.saleTime+=dt;if(b.saleTime>=cycleSeconds(w,'cake_stall')){b.saleTime=0;b.stock.items.cake--;b.sold++;b.pendingCash+=config.retail.price;w.stats.earned+=config.retail.price;fx('cash',config.retail.price,p.cakeSupply,p.cash);}}
 }
 export function bakeryGoal(w:World):Omit<Goal,'stage'>|null {
   if(!has(w,'bakery_land'))return null;

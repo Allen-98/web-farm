@@ -13,10 +13,10 @@ export class BrowserPlatform {
     try{
       const raw=localStorage.getItem(SAVE_KEY);if(!raw)return null;
       const envelope=JSON.parse(raw);
-      if(envelope.schemaVersion!==1||![CONFIG_VERSION,'farm-v1.0','farm-v2.0','farm-v3.0'].includes(envelope.configVersion)||envelope.configVersion!==envelope.world?.version)throw new Error('Unsupported saved progress');
+      if(envelope.schemaVersion!==1||![CONFIG_VERSION,'farm-v1.0','farm-v2.0','farm-v3.0','farm-v3.1'].includes(envelope.configVersion)||envelope.configVersion!==envelope.world?.version)throw new Error('Unsupported saved progress');
       const migrated=envelope.configVersion!==CONFIG_VERSION;
       const w=migrateWorld(envelope.world as World);
-      if(migrated){const suffix=envelope.configVersion==='farm-v1.0'?'v1-before-chapter2':envelope.configVersion==='farm-v2.0'?'v2-before-chapter3':'v3-before-capacity';const key=`${SAVE_KEY}.backup.${suffix}`;if(!localStorage.getItem(key))localStorage.setItem(key,raw);this.migratedFrom=envelope.configVersion;}
+      if(migrated){const suffix=envelope.configVersion==='farm-v1.0'?'v1-before-chapter2':envelope.configVersion==='farm-v2.0'?'v2-before-chapter3':envelope.configVersion==='farm-v3.1'?'v3.1-before-orders':'v3-before-capacity';const key=`${SAVE_KEY}.backup.${suffix}`;if(!localStorage.getItem(key))localStorage.setItem(key,raw);this.migratedFrom=envelope.configVersion;}
       w.events=[];w.player.path=[];w.navigationTarget=null;
       for(const u of w.upgrades){const p=map.investmentZones.find(z=>z.upgradeId===u.id);if(p)u.position={x:p.x,z:p.z};u.label=UPGRADE_SPECS.find(spec=>spec.id===u.id)?.label??u.label;}
       for(const a of w.workers){a.path=[];a.targetCrop=null;}

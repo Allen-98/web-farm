@@ -1,3 +1,4 @@
+import {cycleSeconds} from './operations.ts';
 import { availableCash, incomeAccount } from './finance.ts';
 import config from '../content/chapter2.json' with { type: 'json' };
 import { inventoryUsed, transferItems, collectCash } from './economy.ts';
@@ -50,11 +51,11 @@ export function updateChapter(w:World,dt:number,fx:Fx):void {
   const c=w.chapter,r=config.recipe,t=c.truck;
   if(has(w,'pack_table')&&c.input.items.egg>=r.eggs&&inventoryUsed(c.output)<c.output.capacity){
     c.progress+=dt;
-    if(c.progress>=r.seconds){c.progress=0;c.input.items.egg-=r.eggs;c.output.items.gift++;c.packed++;fx('gift',1,config.points.input,config.points.output);}
+    if(c.progress>=cycleSeconds(w,'pack_table')){c.progress=0;c.input.items.egg-=r.eggs;c.output.items.gift++;c.packed++;fx('gift',1,config.points.input,config.points.output);}
   }
   if(has(w,'gift_stall')&&c.stock.items.gift){
     c.retailTime+=dt;
-    if(c.retailTime>=config.retail.seconds){c.retailTime=0;c.stock.items.gift--;c.retailSold++;c.pendingCash+=config.retail.price;w.stats.earned+=config.retail.price;fx('cash',config.retail.price,config.points.supply,config.points.cash);}
+    if(c.retailTime>=cycleSeconds(w,'gift_stall')){c.retailTime=0;c.stock.items.gift--;c.retailSold++;c.pendingCash+=config.retail.price;w.stats.earned+=config.retail.price;fx('cash',config.retail.price,config.points.supply,config.points.cash);}
   }
   t.cooldown=Math.max(0,t.cooldown-dt);
   if(has(w,'wholesale')&&t.loaded===config.wholesale.boxes&&!t.cooldown){

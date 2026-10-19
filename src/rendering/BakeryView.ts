@@ -1,3 +1,4 @@
+import {cycleSeconds,facilityLevel,facilityStatuses} from '../domain/operations.ts';
 import Phaser from 'phaser';
 import {tex,box,poly} from './ChapterView.ts';
 import {project} from './projection.ts';
@@ -54,9 +55,9 @@ export class BakeryView {
     for(const p of this.pads){p.g.setVisible(has(w,p.requires));p.label.setVisible(has(w,p.requires));if(p.id==='cash')p.label.setText(`$ ${b.pendingCash}`);if(p.id==='atm')p.label.setText(bankOpen(w)?'账户存款':'招聘面板建 ATM');}
     const amounts:Record<string,number>={wheat:Math.ceil(b.millInput.items.wheat/4),flour:b.flour.items.flour,cake:b.cakes.items.cake,stock:b.stock.items.cake,cash:Math.ceil(b.pendingCash/40)};
     this.stocks.forEach(t=>t.images.forEach((v,i)=>{v.setVisible(i<Math.min(18,amounts[t.id]));if(t.id==='stock')v.setY(project({x:55.7,z:15}).y-45-i*6);}));
-    this.millText.setVisible(has(w,'mill')).setText(`小麦 ${b.millInput.items.wheat} → 面粉 ${b.flour.items.flour}\n3 份 / 袋 · 研磨 ${Math.floor(b.millTime/2*100)}%`);
-    this.ovenText.setVisible(has(w,'oven')).setText(`面粉 ${b.ovenFlour.items.flour} + 鸡蛋 ${b.ovenEgg.items.egg}\n蛋糕 ${b.cakes.items.cake} · 烘烤 ${Math.floor(b.ovenTime/4*100)}%`);
-    this.atm.setVisible(has(w,'market_land')).setAlpha(bankOpen(w)?1:.4);this.atmLabel.setVisible(has(w,'market_land')).setText(bankOpen(w)?`ATM 账户\n余额 $${w.bank.cash}`:'ATM $250\n在雇员面板建设');
+    this.millText.setVisible(has(w,'mill')).setText(`小麦 ${b.millInput.items.wheat} → 面粉 ${b.flour.items.flour}\n${facilityStatuses(w).find(f=>f.id==='mill')?.state} · Lv.${facilityLevel(w,'mill')} · 研磨 ${Math.floor(b.millTime/cycleSeconds(w,'mill')*100)}%`);
+    this.ovenText.setVisible(has(w,'oven')).setText(`面粉 ${b.ovenFlour.items.flour} + 鸡蛋 ${b.ovenEgg.items.egg}\n${facilityStatuses(w).find(f=>f.id==='oven')?.state} · Lv.${facilityLevel(w,'oven')} · 蛋糕 ${b.cakes.items.cake} · 烘烤 ${Math.floor(b.ovenTime/cycleSeconds(w,'oven')*100)}%`);
+    this.atm.setVisible(has(w,'market_land')).setAlpha(bankOpen(w)?1:.4);this.atmLabel.setVisible(has(w,'market_land')).setText(bankOpen(w)?`ATM 账户\n余额 $${w.bank.cash}`:'ATM $250\n在经营面板建设');
     this.customers.forEach(v=>v.setVisible(has(w,'cake_stall')));
   }
 }

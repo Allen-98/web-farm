@@ -1,4 +1,5 @@
 import {MapCamera} from './MapCamera.ts';
+import {OrderBoardView} from './OrderBoardView.ts';
 import {farmCapacity} from '../domain/capacity.ts';
 import { BakeryView, BAKERY_ASSETS } from './BakeryView.ts';
 import { bakeryConfig } from '../domain/bakery.ts';
@@ -59,6 +60,7 @@ interface Flight { image: Phaser.GameObjects.Image; from: {x:number;y:number}; t
 const TEXT: Phaser.Types.GameObjects.Text.TextStyle={fontFamily:'"Microsoft YaHei", "PingFang SC", sans-serif',fontSize:'13px',fontStyle:'bold',color:'#fffbe3',stroke:'#4f633f',strokeThickness:3};
 
 export class FarmScene extends Phaser.Scene {
+  orderBoard!:OrderBoardView;
   mapCamera!:MapCamera;
   cornLabel!:Phaser.GameObjects.Text;
   coopLabel!:Phaser.GameObjects.Text;
@@ -92,7 +94,7 @@ export class FarmScene extends Phaser.Scene {
   renderedFps=60;
   constructor(ports: ScenePorts) { super('Farm');this.ports=ports; }
   create():void {
-    createArt(this);createTerrain(this);this.chapterView=new ChapterView(this);this.bakeryView=new BakeryView(this);
+    createArt(this);createTerrain(this);this.chapterView=new ChapterView(this);this.bakeryView=new BakeryView(this);this.orderBoard=new OrderBoardView(this);
     this.cameras.main.setBackgroundColor('#97bb71');
     const w=this.ports.world();
     const coop=project({x:11,z:4.5});this.add.image(coop.x,coop.y,ASSETS.coop).setOrigin(.5,190/300).setDepth(coop.y+10).setScale(.91);
@@ -166,7 +168,7 @@ export class FarmScene extends Phaser.Scene {
     const elapsed=Math.min(delta/1000,.167),w=this.ports.world();
     this.frames++;if(_time-this.fpsAt>=1000){this.renderedFps=Math.round(this.frames*1000/(_time-this.fpsAt));this.frames=0;this.fpsAt=_time;}
     if(!this.ports.paused()){this.accumulator+=elapsed;let n=0;while(this.accumulator>=DT&&n<5){stepWorld(w,screenDirection(this.ports.movement().x,this.ports.movement().z));for(const e of w.events)this.flight(e);this.accumulator-=DT;n++;}}else this.accumulator=0;
-    this.mapCamera.update();this.refreshActors();this.chapterView.update(w);this.bakeryView.update(w);
+    this.mapCamera.update();this.refreshActors();this.chapterView.update(w);this.bakeryView.update(w);this.orderBoard.update(w);
     for(const a of [w.player,...w.workers])this.actors.get(a.id)!.update(a,w);
     this.crops.forEach((v,i)=>{const ready=w.crops[i].readyAt<=w.time;v.setVisible(true).setAlpha(ready?1:.65).setScale(ready?.52:.13+Math.max(0,1-(w.crops[i].readyAt-w.time)/6)*.2).setTint(ready?0xffffff:0x9abc67);});
     this.eggs.forEach((v,i)=>v.setVisible(i<w.ground.items.egg));

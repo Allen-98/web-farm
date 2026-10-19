@@ -9,7 +9,7 @@ const port=Number(process.env.FARM_PORT||8792);
 http.createServer((request,response)=>{
   try{
     const url=new URL(request.url,'http://localhost');
-    if(url.pathname==='/health'){response.writeHead(200,{'Content-Type':'application/json'});response.end(JSON.stringify({app:'farm-and-flow',version:'0.1.0'}));return;}
+    if(url.pathname==='/health'){response.writeHead(200,{'Content-Type':'application/json'});response.end(JSON.stringify({app:'farm-and-flow',version:JSON.parse(fs.readFileSync(path.join(root,'package.json'),'utf8')).version}));return;}
     const design=url.pathname.startsWith('/design/'),base=design?path.join(root,'docs','reference'):dist;
     const relative=decodeURIComponent(design?url.pathname.slice('/design/'.length):url.pathname==='/'?'index.html':url.pathname.slice(1));
     const file=path.resolve(base,relative);

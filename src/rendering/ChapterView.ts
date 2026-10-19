@@ -1,3 +1,4 @@
+import {cycleSeconds,facilityLevel,facilityStatuses} from '../domain/operations.ts';
 import Phaser from 'phaser';
 import { project } from './projection.ts';
 import { chapterConfig as config, has } from '../domain/chapter2.ts';
@@ -77,9 +78,9 @@ export class ChapterView {
     for(const p of this.pads){const visible=has(w,['input','output'].includes(p.id)?'pack_table':['supply','cash'].includes(p.id)?'gift_stall':'wholesale');p.g.setVisible(visible);p.label.setVisible(visible);if(p.id==='cash')p.label.setText(`$ ${c.pendingCash}`);if(p.id==='truckCash')p.label.setText(`$ ${c.truck.pendingCash}`);if(p.id==='loading')p.label.setText(`${c.truck.loaded} / ${config.wholesale.boxes}`);}
     const count:Record<string,number>={input:Math.ceil(c.input.items.egg/6),output:c.output.items.gift,stock:c.stock.items.gift,truck:trip>9?config.wholesale.boxes:c.truck.loaded,cash:Math.ceil(c.pendingCash/20),truckCash:Math.ceil(c.truck.pendingCash/30)};
     for(const s of this.stacks)s.images.forEach((v,i)=>{v.setVisible(i<Math.min(24,count[s.id])&&(s.id!=='truck'||!trip||trip>9));const p=project(s.at);if(s.id==='truck')v.setPosition(p.x+(i%3-1)*24+offset.x,p.y-48-Math.floor(i/3)*13+offset.y).setDepth(project(config.buildings[2].center).y+offset.y+20+i*.01);if(s.id==='stock')v.setY(p.y-45-i*7);if(s.id==='input')v.setY(p.y-34-i*5).setDepth(project(config.buildings[0].center).y+20+i*.01);});
-    this.status.setVisible(has(w,'pack_table')).setText(`鸡蛋 ${c.input.items.egg} → 礼盒 ${c.output.items.gift}\n6 枚 / 盒 · 包装 ${Math.floor(c.progress/config.recipe.seconds*100)}%`);
+    this.status.setVisible(has(w,'pack_table')).setText(`鸡蛋 ${c.input.items.egg} → 礼盒 ${c.output.items.gift}\n${facilityStatuses(w).find(f=>f.id==='pack_table')?.state} · Lv.${facilityLevel(w,'pack_table')} · 包装 ${Math.floor(c.progress/cycleSeconds(w,'pack_table')*100)}%`);
     this.truckStatus.setVisible(has(w,'wholesale')).setText(c.truck.cooldown?`货车送货中 · ${Math.ceil(c.truck.cooldown)} 秒返回`:`批发订单 ${c.truck.loaded} / ${config.wholesale.boxes} 盒\n装满赚 $${config.wholesale.price} · 已发 ${c.truck.delivered} 车`);
-    const pack=project(config.buildings[0].center);this.bar.clear();if(has(w,'pack_table'))this.bar.fillStyle(0x3e6955).fillRoundedRect(pack.x-55,pack.y-110,110,5,2).fillStyle(0xf3d58c).fillRoundedRect(pack.x-55,pack.y-110,110*c.progress/config.recipe.seconds,5,2);
+    const pack=project(config.buildings[0].center);this.bar.clear();if(has(w,'pack_table'))this.bar.fillStyle(0x3e6955).fillRoundedRect(pack.x-55,pack.y-110,110,5,2).fillStyle(0xf3d58c).fillRoundedRect(pack.x-55,pack.y-110,110*c.progress/cycleSeconds(w,'pack_table'),5,2);
     for(const v of this.customers)v.setVisible(has(w,'gift_stall'));
   }
 }

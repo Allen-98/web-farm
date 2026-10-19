@@ -14,7 +14,7 @@ const advance=(w,seconds)=>{for(let i=0;i<seconds/DT;i++)stepWorld(w);};
 test('v3 save migration preserves every economic value and keeps the original backup',()=>{
   const source=structuredClone(old.baking),before=structuredClone(source),w=migrateWorld(source);
   assert.deepEqual(source,before);
-  const {version,upgrades,...rest}=w,{version:oldVersion,upgrades:oldUpgrades,...oldRest}=before;
+  const {version,upgrades,orders,...rest}=w,{version:oldVersion,upgrades:oldUpgrades,...oldRest}=before;
   assert.deepEqual(rest,oldRest);assert.deepEqual(upgrades.slice(0,24),oldUpgrades);
   assert.ok(upgrades.slice(24).every(u=>!u.unlocked&&u.paid===0));validateWorld(w);
   const raw=JSON.stringify({schemaVersion:1,configVersion:oldVersion,world:source}),data=new Map([['farm-and-flow.save.v1',raw]]);

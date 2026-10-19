@@ -1,4 +1,7 @@
 import {capacityUpgrades,farmCapacity,applyCapacity,workerCapacity} from './capacity.ts';
+import {operationsUpgrades,cycleSeconds,rescaleClock,FACILITIES} from './operations.ts';
+import {createOrders,validateOrders,deliverOrder,ORDER_POINT,orderReady,TRADE_ITEMS,updateOrders} from './orders.ts';
+import type {OrdersState} from './orders.ts';
 import { bakeryConfig, createBakery, emptyItems, bakeryMode, bakeryInteract, updateBakery, bakeryGoal } from './bakery.ts';
 import type {BakeryState} from './bakery.ts';
 import { availableCash, incomeAccount, spendCash, depositWallet, bankOpen, collectionRate, cashSources, ATM, updateCashier } from './finance.ts';
@@ -13,7 +16,7 @@ import type { Inventory, Vec2, Wallet, Upgrade, Order, Station, Item } from './c
 
 export { tuning, map };
 export const DT = 1 / tuning.simulation.tickHz;
-export const CONFIG_VERSION = 'farm-v3.1';
+export const CONFIG_VERSION = 'farm-v3.2';
 export const BOOT_CASH = { x: 12, z: 15.5 };
 export const FEED = { x: 15, z: 5 };
 export const EGG_PICKUP = { x: 12.8, z: 9.4 };
@@ -24,6 +27,7 @@ export interface FarmStation extends Station { order: Order; service: number; se
 export interface FarmUpgrade extends Upgrade { position: Vec2;label?:string;job?:string }
 export interface FxEvent { kind: 'item' | 'build'; item: Item | 'cash'; amount: number; from: Vec2; to: Vec2 }
 export interface World {
+  orders:OrdersState;
   chapter: ChapterState;bakery:BakeryState;bank:{cash:number;deposited:number};logistics:{eggToPack:number;eggToOven:number;originalToOven:number;flour:number;cake:number};
   version: string; tick: number; time: number; player: Actor; wallet: Wallet; looseCash: { cash: number };
   feed: Inventory; ground: Inventory; crops: Crop[]; stations: FarmStation[]; upgrades: FarmUpgrade[];
@@ -40,11 +44,11 @@ export function unlocked(w: World, id: string): boolean { return w.upgrades.some
 export function zone(id: string): Vec2 { const p = map.interactionZones.find(p => p.id === id); if (!p) throw new Error(`Unknown zone ${id}`); return { x: p.x, z: p.z }; }
 function actor(id: string, position: Vec2, capacity: number, job = ''): Actor { return { id, cash:0,task:null,deliveries:0,position: point(position), bag: bag(capacity), path: [], facing: { x: 1, z: 1 }, moving: false, job, cooldown: 0, targetCrop: null, credit: 0, delivering: false }; }
 export const MAIN_UPGRADE_COUNT=17;
-export const UPGRADE_SPECS=[...tuning.upgrades.map(u=>({...u,label:LABELS[u.id],position:map.investmentZones.find(z=>z.upgradeId===u.id)!})),...chapterConfig.upgrades,...bakeryConfig.upgrades,...bakeryConfig.automation,...capacityUpgrades];
+export const UPGRADE_SPECS=[...tuning.upgrades.map(u=>({...u,label:LABELS[u.id],position:map.investmentZones.find(z=>z.upgradeId===u.id)!})),...chapterConfig.upgrades,...bakeryConfig.upgrades,...bakeryConfig.automation,...capacityUpgrades,...operationsUpgrades];
 export function createWorld(): World {
   const field = map.areas.find(a => a.id === 'corn_field')!;
   return {
-    version: CONFIG_VERSION, tick: 0, time: 0, chapter: createChapter(),bakery:createBakery(),bank:{cash:0,deposited:0},logistics:{eggToPack:0,eggToOven:0,originalToOven:0,flour:0,cake:0},
+    orders:createOrders(),version: CONFIG_VERSION, tick: 0, time: 0, chapter: createChapter(),bakery:createBakery(),bank:{cash:0,deposited:0},logistics:{eggToPack:0,eggToOven:0,originalToOven:0,flour:0,cake:0},
     player: actor('player', map.playerSpawn, tuning.player.inventoryCapacity), wallet: { cash: 0 }, looseCash: { cash: tuning.bootstrap.looseCash },
     feed: bag(tuning.farm.feedCapacity), ground: bag(tuning.farm.eggGroundCapacity),
     crops: Array.from({ length: field.rows! * field.columns! }, (_, id) => ({ id, position: { x: field.x + 0.6 + (id % field.columns!) * 1.3, z: field.z + 0.5 + Math.floor(id / field.columns!) * 0.96 }, readyAt: 0, reservedBy: null })),
@@ -135,6 +139,7 @@ function interact(w: World, dt: number): void {
   const a = w.player, used = inventoryUsed(a.bag), u = w.upgrades.slice(0,MAIN_UPGRADE_COUNT).find(u=>!u.unlocked&&u.requires.every(id=>unlocked(w,id))&&eligible(w,u.id)&&distance(a.position,u.position)<.95);
   let mode = '', target: FarmStation | undefined;
   if (u && distance(a.position, u.position) < 0.95) mode = `invest:${u.id}`;
+  else if(w.orders.active&&!orderReady(w)&&distance(a.position,ORDER_POINT)<1&&TRADE_ITEMS.some(i=>a.bag.items[i]&&w.orders.active!.stock.items[i]<w.orders.active!.offer.requires[i]))mode='order-delivery';
   else if(bakeryMode(w))mode=bakeryMode(w);
   else if(bankOpen(w)&&w.wallet.cash&&distance(a.position,ATM)<1)mode='atm-deposit';
   else if(chapterMode(w))mode=chapterMode(w);
@@ -159,7 +164,8 @@ function interact(w: World, dt: number): void {
   if (mode.startsWith('invest:') && u) {
     const result = invest({cash:availableCash(w)}, u, allowance, new Set(w.upgrades.filter(x => x.unlocked).map(x => x.id)));
     spendCash(w,result.paid);fx(w, 'cash', result.paid, a.position, u.position); if (result.completed) applyUnlock(w, u);
-  } else if(mode==='atm-deposit'){const amount=depositWallet(w);fx(w,'cash',amount,a.position,ATM);}
+  } else if(mode==='order-delivery'){deliverOrder(w,a.bag,allowance,(item,n)=>fx(w,item,n,a.position,ORDER_POINT));}
+  else if(mode==='atm-deposit'){const amount=depositWallet(w);fx(w,'cash',amount,a.position,ATM);}
   else if(['mill-input','flour-output','flour-input','oven-egg','cake-output','cake-supply','wheat-harvest','cake-cash'].includes(mode))bakeryInteract(w,mode,allowance,(item,n,from,to)=>fx(w,item,n,from,to));
   else if (['pack-input','pack-output','gift-supply','truck-load','gift-cash','truck-cash'].includes(mode)) chapterInteract(w,mode,allowance,(item,n,from,to)=>fx(w,item,n,from,to));
   else if (mode === 'feed') { const n = transferItems(a.bag, w.feed, 'corn', allowance); fx(w, 'corn', n, a.position, FEED); }
@@ -229,7 +235,7 @@ function productionAndSales(w: World, dt: number): void {
     if (!s.enabled) continue;
     const config = tuning.stations.find(c => c.id === s.id)!;
     if (s.stock.items.egg >= s.order.eggsPerPack) s.service += dt;
-    if (s.service >= config.serviceSecondsPerPack && completeOrderPack(s, s.order)) {
+    if (s.service >= cycleSeconds(w,s.id) && completeOrderPack(s, s.order)) {
       s.service = 0; s.lastSale = w.time; w.stats.eggsSold += s.order.eggsPerPack; w.stats.earned += s.order.cashPerPack;
       fx(w, 'cash', s.order.cashPerPack, zone(s.id === 'car_counter' ? 'car_supply' : 'walk_supply'), zone(s.id === 'car_counter' ? 'car_cash' : 'walk_cash'));
       if (!s.order.packsRemaining) { s.serial++; s.order = { id: `${s.id}-${s.serial}`, eggsPerPack: config.eggsPerPack, cashPerPack: config.cashPerPack, packsRemaining: config.orderPacks[s.serial % config.orderPacks.length] }; }
@@ -249,13 +255,18 @@ export function stepWorld(w: World, move: Vec2 = { x: 0, z: 0 }): void {
   } else { followPath(w, w.player, tuning.player.moveMetersPerSecond, dt); if (!w.player.path.length) w.navigationTarget = null; }
   interact(w, dt);
   for (const a of w.workers) updateWorker(w, a, dt);
-  updateMachine(w, dt); productionAndSales(w, dt);updateChapter(w,dt,(item,n,from,to)=>fx(w,item,n,from,to));updateBakery(w,dt,(item,n,from,to)=>fx(w,item,n,from,to));
+  updateMachine(w, dt); productionAndSales(w, dt);updateChapter(w,dt,(item,n,from,to)=>fx(w,item,n,from,to));updateBakery(w,dt,(item,n,from,to)=>fx(w,item,n,from,to));updateOrders(w);
 }
 export function getGoal(w: World): Goal {
   const next = nextUpgrade(w), chapterTwo=unlocked(w,'walk_clerk'), stage=unlocked(w,'packer')?`第三章 · 烘焙工坊 ${w.upgrades.slice(12,17).filter(u=>u.unlocked).length} / 5`:chapterTwo?`第二章 · 乡间集市 ${w.upgrades.slice(7,12).filter(u=>u.unlocked).length} / 5`:`第一章 · 鸡蛋农场 ${Math.min(7,w.upgrades.filter(u=>u.unlocked).length+1)} / 7`;
   const result = (title: string, detail: string, target: Vec2): Goal => ({ title, detail, target, stage });
   if (w.looseCash.cash > 0) return result('领取启动资金', '靠近现金堆，收下第一桶金', BOOT_CASH);
   if (next && availableCash(w) >= next.cost - next.paid) return result(LABELS[next.id]??next.label??next.id, `还需 $${next.cost - next.paid} · 站在地块里自动投入`, next.position);
+  if(w.orders.active){
+    if(orderReady(w))return result('订单已备齐，领取货款','点击订单按钮结算 · 货款直接计入余额',ORDER_POINT);
+    if(TRADE_ITEMS.some(i=>w.player.bag.items[i]&&w.orders.active!.stock.items[i]<w.orders.active!.offer.requires[i]))return result('把订单货物送到交货区','走近订单板自动卸货 · 员工也会协助送货',ORDER_POINT);
+  }
+  if(!next&&unlocked(w,'cake_stall')&&!w.orders.active)return result('接一笔新订单','点击「订单」挑选生意，继续发展农场',ORDER_POINT);
   if(unlocked(w,'bakery_land')){
     if(next&&availableCash(w)<next.cost-next.paid){const source=cashSources(w).sort((a,b)=>b.amount-a.amount)[0];if(source?.amount)return result('\u9886\u53d6\u8d27\u6b3e\uff0c\u6269\u5efa\u70d8\u7119\u5de5\u574a',`\u8fd8\u5dee $${next.cost-next.paid-availableCash(w)} \u00b7 \u53ef\u62db\u8058\u6536\u6b3e\u5458`,source.at);}
     if(!unlocked(w,'wheat_field')&&next)return result(next.label??next.id,`$ ${next.cost-next.paid}`,next.position);
@@ -285,13 +296,14 @@ export function getGoal(w: World): Goal {
 export function purchaseUpgrade(w:World,id:string):boolean {
   const u=w.upgrades.find(u=>u.id===id);
   if(!u||u.unlocked||!u.requires.every(id=>unlocked(w,id))||!eligible(w,id)||availableCash(w)<u.cost-u.paid)return false;
+  const facility=FACILITIES.find(f=>u.id.startsWith(`speed_${f.id}_`)),oldSeconds=facility?cycleSeconds(w,facility.id):0;
   const result=invest({cash:availableCash(w)},u,u.cost-u.paid,new Set(w.upgrades.filter(u=>u.unlocked).map(u=>u.id)));
-  spendCash(w,result.paid);if(result.completed)applyUnlock(w,u);return result.completed;
+  spendCash(w,result.paid);if(result.completed){applyUnlock(w,u);if(facility)rescaleClock(w,facility.id,oldSeconds);}return result.completed;
 }
-export function validateWorld(w:World,legacyV3=false):void {
-  if(w.version!==(legacyV3?'farm-v3.0':CONFIG_VERSION)||!Number.isSafeInteger(w.tick)||w.tick<0||w.time!==w.tick*DT)throw new Error('unsupported save');
+export function validateWorld(w:World,legacyV3:boolean|'v3.1'=false):void {
+  if(w.version!==(legacyV3==='v3.1'?'farm-v3.1':legacyV3?'farm-v3.0':CONFIG_VERSION)||!Number.isSafeInteger(w.tick)||w.tick<0||w.time!==w.tick*DT)throw new Error('unsupported save');
   const f=farmCapacity(w);
-  if(w.crops.length!==48||w.production.length!==(legacyV3?6:f.chickens)||w.stations.length!==2||w.upgrades.length!==(legacyV3?24:UPGRADE_SPECS.length)||w.bakery.crops.length!==25)throw new Error('invalid world shape');
+  if(w.crops.length!==48||w.production.length!==(legacyV3===true?6:f.chickens)||w.stations.length!==2||w.upgrades.length!==(legacyV3==='v3.1'?30:legacyV3?24:UPGRADE_SPECS.length)||w.bakery.crops.length!==25)throw new Error('invalid world shape');
   const finite=(v:unknown):void=>{if(typeof v==='number'&&!Number.isFinite(v))throw new Error('non-finite value');if(v&&typeof v==='object')for(const child of Object.values(v))finite(child);};finite(w);
   const b=w.bakery,c=w.chapter;
   const integers=[w.wallet.cash,w.bank.cash,w.bank.deposited,w.looseCash.cash,...Object.values(w.stats),...Object.values(w.logistics),b.harvested,b.milled,b.baked,b.sold,b.pendingCash,c.packed,c.retailSold,c.wholesaleSold,c.pendingCash,c.truck.loaded,c.truck.delivered,c.truck.pendingCash];
@@ -300,7 +312,7 @@ export function validateWorld(w:World,legacyV3=false):void {
   const stores=[w.player.bag,w.feed,w.ground,w.machine.bag,...w.workers.map(a=>a.bag),...w.stations.map(s=>s.stock),c.input,c.output,c.stock,b.millInput,b.flour,b.ovenFlour,b.ovenEgg,b.cakes,b.stock];stores.forEach(inventoryUsed);
   const capacities=[w.player.bag.capacity,w.feed.capacity,w.ground.capacity,w.machine.bag.capacity,c.input.capacity,c.output.capacity,c.stock.capacity,b.millInput.capacity,b.flour.capacity,b.ovenFlour.capacity,b.ovenEgg.capacity,b.cakes.capacity,b.stock.capacity];
   if(JSON.stringify(capacities)!==JSON.stringify([60,f.feed,f.ground,f.machine,120,36,36,120,60,60,60,36,60])||w.looseCash.cash>50)throw new Error('invalid world limits');
-  if(!legacyV3&&w.workers.some(a=>a.bag.capacity!==workerCapacity(w,a)))throw new Error('invalid worker capacity');
+  if(legacyV3!==true&&w.workers.some(a=>a.bag.capacity!==workerCapacity(w,a)))throw new Error('invalid worker capacity');
   for(let i=0;i<w.upgrades.length;i++){
     const u=w.upgrades[i],spec=UPGRADE_SPECS[i];
     if(u.id!==spec.id||u.cost!==spec.cost||!Number.isSafeInteger(u.paid)||u.paid<0||u.paid>u.cost||u.unlocked!==(u.paid===u.cost)||JSON.stringify(u.requires)!==JSON.stringify(spec.requires)||(u.unlocked&&(!spec.requires.every(id=>unlocked(w,id))||!eligible(w,u.id))))throw new Error('invalid prerequisite or progression');
@@ -311,15 +323,17 @@ export function validateWorld(w:World,legacyV3=false):void {
   for(const[job,count]of Object.entries(jobCounts))if(w.workers.filter(a=>a.job===job).length!==count)throw new Error('invalid worker role');
   for(const a of [w.player,...w.workers])if(!Number.isSafeInteger(a.cash)||a.cash<0||!Number.isSafeInteger(a.deliveries)||a.deliveries<0||(a.task!==null&&typeof a.task!=='string')||a.path.length>500||typeof a.delivering!=='boolean')throw new Error('invalid worker state');
   for(let i=0;i<2;i++){const s=w.stations[i],spec=tuning.stations[i];if(s.id!==spec.id||s.enabled!==unlocked(w,s.id)||s.order.eggsPerPack!==spec.eggsPerPack||s.order.cashPerPack!==spec.cashPerPack||s.order.packsRemaining<1||s.order.packsRemaining>2||s.stock.capacity!==(i===1&&unlocked(w,'walk_expansion')?240:120))throw new Error('invalid station');}
-  const timers:[[number,number],[number,number],[number,number],[number,number],[number,number],[number,number]]=[[c.progress,chapterConfig.recipe.seconds],[c.retailTime,chapterConfig.retail.seconds],[c.truck.cooldown,chapterConfig.wholesale.returnSeconds],[b.millTime,bakeryConfig.mill.seconds],[b.ovenTime,bakeryConfig.oven.seconds],[b.saleTime,bakeryConfig.retail.seconds]];
+  const timers:[[number,number],[number,number],[number,number],[number,number],[number,number],[number,number]]=[[c.progress,cycleSeconds(w,'pack_table')],[c.retailTime,cycleSeconds(w,'gift_stall')],[c.truck.cooldown,chapterConfig.wholesale.returnSeconds],[b.millTime,cycleSeconds(w,'mill')],[b.ovenTime,cycleSeconds(w,'oven')],[b.saleTime,cycleSeconds(w,'cake_stall')]];
   if(timers.some(([value,max])=>value<0||value>max)||c.truck.loaded>=12||w.production.some(n=>n<0||n>tuning.farm.productionSecondsPerChicken))throw new Error('invalid production clock');
   const actors=[w.player,...w.workers],held=(item:Item)=>actors.reduce((n,a)=>n+a.bag.items[item],0);
+  if(!legacyV3)validateOrders(w);
+  const ordered=(item:'egg'|'gift'|'cake')=>legacyV3?0:w.orders.delivered[item]+(w.orders.active?.stock.items[item]??0);
   if(w.stats.harvested!==w.feed.items.corn+w.machine.bag.items.corn+held('corn')+w.stats.produced)throw new Error('corn conservation failed');
-  if(w.stats.produced!==w.ground.items.egg+held('egg')+w.stations.reduce((n,s)=>n+s.stock.items.egg,0)+c.input.items.egg+c.packed*6+b.ovenEgg.items.egg+b.baked*2+w.stats.eggsSold)throw new Error('egg conservation failed');
-  if(c.packed!==held('gift')+c.output.items.gift+c.stock.items.gift+c.truck.loaded+c.retailSold+c.wholesaleSold||c.wholesaleSold!==c.truck.delivered*12)throw new Error('gift conservation failed');
+  if(w.stats.produced!==ordered('egg')+w.ground.items.egg+held('egg')+w.stations.reduce((n,s)=>n+s.stock.items.egg,0)+c.input.items.egg+c.packed*6+b.ovenEgg.items.egg+b.baked*2+w.stats.eggsSold)throw new Error('egg conservation failed');
+  if(c.packed!==ordered('gift')+held('gift')+c.output.items.gift+c.stock.items.gift+c.truck.loaded+c.retailSold+c.wholesaleSold||c.wholesaleSold!==c.truck.delivered*12)throw new Error('gift conservation failed');
   if(b.harvested!==held('wheat')+b.millInput.items.wheat+b.milled*3)throw new Error('wheat conservation failed');
   if(b.milled!==held('flour')+b.flour.items.flour+b.ovenFlour.items.flour+b.baked*2)throw new Error('flour conservation failed');
-  if(b.baked!==held('cake')+b.cakes.items.cake+b.stock.items.cake+b.sold)throw new Error('cake conservation failed');
+  if(b.baked!==ordered('cake')+held('cake')+b.cakes.items.cake+b.stock.items.cake+b.sold)throw new Error('cake conservation failed');
   const money=availableCash(w)+w.looseCash.cash+w.workers.reduce((n,a)=>n+a.cash,0)+cashSources(w).reduce((n,p)=>n+p.amount,0)+w.upgrades.reduce((n,u)=>n+u.paid,0);
   if(money!==50+w.stats.earned)throw new Error('cash conservation failed');
   const only=(store:Inventory,item:Item)=>{if(Object.entries(store.items).some(([key,n])=>key!==item&&n!==0))throw new Error('invalid cargo store');};
@@ -328,10 +342,11 @@ export function validateWorld(w:World,legacyV3=false):void {
 /** Old economies are validated before adding empty inventories, roles and construction nodes. */
 export function migrateWorld(value:World):World {
   if(value.version===CONFIG_VERSION){validateWorld(value);return value;}
-  if(value.version==='farm-v3.0'){
-    validateWorld(value,true);
+  if(value.version==='farm-v3.0'||value.version==='farm-v3.1'){
+    validateWorld(value,value.version==='farm-v3.1'?'v3.1':true);
     const w=structuredClone(value);
-    for(const spec of capacityUpgrades)w.upgrades.push({...spec,requires:[...spec.requires],paid:0,unlocked:false,position:{...spec.position}});
+    for(const spec of UPGRADE_SPECS.slice(w.upgrades.length))w.upgrades.push({...spec,requires:[...spec.requires],paid:0,unlocked:false,position:{...spec.position}});
+    w.orders=createOrders();
     w.version=CONFIG_VERSION;validateWorld(w);return w;
   }
   if(!['farm-v1.0','farm-v2.0'].includes(value.version))throw new Error('unsupported save');
@@ -345,5 +360,5 @@ export function migrateWorld(value:World):World {
   for(const store of [w.player.bag,w.feed,w.ground,w.machine.bag,...w.workers.map(a=>a.bag),...w.stations.map(s=>s.stock),w.chapter.input,w.chapter.output,w.chapter.stock])store.items={...emptyItems(),...store.items};
   for(const a of [w.player,...w.workers]){a.cash=0;a.task=null;a.deliveries=0;a.path=[];}
   for(const spec of UPGRADE_SPECS.slice(12))w.upgrades.push({...spec,requires:[...spec.requires],paid:0,unlocked:false,position:{x:spec.position.x,z:spec.position.z}});
-  w.cashRate=0;w.version=CONFIG_VERSION;validateWorld(w);return w;
+  w.orders=createOrders();w.cashRate=0;w.version=CONFIG_VERSION;validateWorld(w);return w;
 }

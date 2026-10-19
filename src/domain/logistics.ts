@@ -1,4 +1,5 @@
 import {farmCapacity} from './capacity.ts';
+import {ORDER_POINT,orderRemaining,type TradeItem} from './orders.ts';
 import { chapterConfig, has } from './chapter2.ts';
 import { bakeryConfig, harvestWheat } from './bakery.ts';
 import { transferItems } from './economy.ts';
@@ -10,13 +11,19 @@ const near=(a:Vec2,b:Vec2)=>Math.hypot(a.x-b.x,a.z-b.z)<.95;
 export const JOB_NAMES:Record<string,string>={harvest:'收割工',haul:'饲料运输',car_counter:'店员·跨区供货',walk_counter:'店员·跨区供货',packer:'包装工',egg_courier:'运蛋员',gift_courier:'礼盒配送',wheat_farmer:'麦农',baker:'烘焙师',cake_courier:'蛋糕配送',cashier:'收款员'};
 export const TASK_NAMES:Record<string,string>={car_counter:'汽车柜台补蛋',walk_counter:'步行柜台补蛋',pack:'包装台送蛋',oven:'烤炉送蛋',gift:'礼盒摊补货',truck:'批发装车',flour:'烤炉送面粉',cake:'蛋糕摊补货',deposit:'去 ATM 存款',harvest:'收割小麦',mill:'磨坊送小麦'};
 export function courierTasks(w:World,a:Actor,kind:Item):Task[]{
+  const order:Task[]=[];
+  if(['egg','gift','cake'].includes(kind)&&w.orders.active&&orderRemaining(w,kind as TradeItem)>0){
+    const source=kind==='egg'?w.ground:kind==='gift'?w.chapter.output:w.bakery.cakes;
+    const from=kind==='egg'?{x:12.8,z:9.4}:kind==='gift'?chapterConfig.points.output:bakeryConfig.points.cakeOutput;
+    order.push({id:`order_${kind}`,item:kind,source,store:w.orders.active.stock,from,to:ORDER_POINT,fill:w.orders.active.offer.requires[kind as TradeItem],priority:.12});
+  }
   if(kind==='egg'){
     const tasks:Task[]=w.stations.filter(s=>s.enabled).map(s=>({id:s.id,item:'egg',source:w.ground,store:s.stock,from:{x:12.8,z:9.4},to:s.id==='car_counter'?{x:13,z:11.7}:{x:18,z:16.5},fill:has(w,'pack_table')?18:48,priority:s.stock.items.egg<4?.35:1.3}));
     if(has(w,'pack_table'))tasks.push({id:'pack',item:'egg',source:w.ground,store:w.chapter.input,from:{x:12.8,z:9.4},to:chapterConfig.points.input,fill:30,priority:1});
     if(has(w,'oven'))tasks.push({id:'oven',item:'egg',source:w.ground,store:w.bakery.ovenEgg,from:{x:12.8,z:9.4},to:bakeryConfig.points.eggInput,fill:16,priority:.8});
     const factor=farmCapacity(w).coopLevel+1;
     for(const task of tasks)task.fill=Math.min(task.store.capacity,task.fill*factor);
-    return a.job==='baker'?tasks.filter(t=>t.id==='oven'):tasks;
+    return a.job==='baker'?tasks.filter(t=>t.id==='oven'):[...order,...tasks];
   }
   if(kind==='gift'){
     const tasks:Task[]=[];
@@ -25,10 +32,10 @@ export function courierTasks(w:World,a:Actor,kind:Item):Task[]{
       // A view onto the authoritative truck counter, updated after each transfer.
       tasks.push({id:'truck',item:'gift',source:w.chapter.output,store:{capacity:12,items:{corn:0,egg:0,gift:w.chapter.truck.loaded,wheat:0,flour:0,cake:0}},from:chapterConfig.points.output,to:chapterConfig.points.loading,fill:12,priority:a.deliveries%3===0?2:.25});
     }
-    return tasks;
+    return [...order,...tasks];
   }
   if(kind==='flour')return has(w,'oven')?[{id:'flour',item:'flour',source:w.bakery.flour,store:w.bakery.ovenFlour,from:bakeryConfig.points.flourOutput,to:bakeryConfig.points.flourInput,fill:24,priority:1}]:[];
-  if(kind==='cake')return has(w,'cake_stall')?[{id:'cake',item:'cake',source:w.bakery.cakes,store:w.bakery.stock,from:bakeryConfig.points.cakeOutput,to:bakeryConfig.points.cakeSupply,fill:12,priority:1}]:[];
+  if(kind==='cake')return [...order,...(has(w,'cake_stall')?[{id:'cake',item:'cake' as const,source:w.bakery.cakes,store:w.bakery.stock,from:bakeryConfig.points.cakeOutput,to:bakeryConfig.points.cakeSupply,fill:12,priority:1}]:[])];
   return [];
 }
 export function updateCourier(w:World,a:Actor,kind:Item,n:number,go:(p:Vec2)=>void,fx:Fx):void {
