@@ -4,7 +4,7 @@ import {capacityUpgrades} from '../src/domain/capacity.ts';
 import {availableCash} from '../src/domain/finance.ts';
 const old=JSON.parse(fs.readFileSync(new URL('./chapter3-checkpoints.json',import.meta.url)));
 const w=migrateWorld(structuredClone(old.baking));
-navigate(w,{x:41,z:16});
+navigate(w,{x:40,z:17.5});
 const checkpoints={};
 for(let i=0;i<6000/DT;i++){
   if(i%30===0){

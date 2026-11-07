@@ -1,11 +1,14 @@
+import {REGION_CENTERS} from './domain/layout.ts';
 import {cashSources} from './domain/finance.ts';
 import {renderOperations,renderOrders} from './presentation/operations.ts';
+import {renderDispatch,renderProductionReport} from './presentation/dispatch.ts';
 import {acceptOrder,claimOrder,ORDER_POINT} from './domain/orders.ts';
 import type {Vec2} from './domain/contracts.ts';
 import {renderStaff} from './presentation/staff.ts';
 import {purchaseUpgrade} from './domain/world.ts';
 import Phaser from 'phaser';
 import './style.css';
+import './presentation/theme.css';
 import { FarmScene } from './rendering/FarmScene.ts';
 import { createWorld, navigate, getGoal } from './domain/world.ts';
 import { BrowserInput } from './input/BrowserInput.ts';
@@ -27,23 +30,24 @@ function pause(paused:boolean):void{manualPaused=paused;input?.reset();if(input)
 function show(dialog:HTMLDialogElement):void{manualPaused=true;input?.reset();if(input)input.enabled=false;save();dialog.showModal();}
 function locate(at:Vec2):void{pause(false);if(scene?.mapCamera.overview)scene.mapCamera.follow();navigate(world,at);}
 const farmScene=new FarmScene({world:()=>world,movement:()=>input?.movement()??{x:0,z:0},paused:()=>manualPaused||hidden,
-  ready:s=>{scene=s;input=new BrowserInput(s.game.canvas,(x,y)=>{if(!manualPaused&&!hidden)navigate(world,s.screenToGround(x,y));},(dx,dy)=>s.mapCamera.pan(dx,dy));s.game.canvas.addEventListener('wheel',e=>{if(manualPaused||hidden||e.ctrlKey)return;e.preventDefault();s.mapCamera.zoomBy(e.deltaY<0?1.12:1/1.12);},{passive:false});document.getElementById('loading')!.classList.add('loaded');document.getElementById('loading')!.setAttribute('aria-hidden','true');hud.present(world,60);if(platform.loadFailed)hud.toast('旧进度读取失败，原存档已保留，自动保存已暂停');else if(platform.migratedFrom)hud.toast('原有进度已保留：订单板与加工升级已开放');},
+  ready:s=>{scene=s;input=new BrowserInput(s.game.canvas,(x,y)=>{if(!manualPaused&&!hidden)navigate(world,s.screenToGround(x,y));},(dx,dy)=>s.mapCamera.pan(dx,dy));s.game.canvas.addEventListener('wheel',e=>{if(manualPaused||hidden||e.ctrlKey)return;e.preventDefault();s.mapCamera.zoomBy(e.deltaY<0?1.12:1/1.12);},{passive:false});document.getElementById('loading')!.classList.add('loaded');document.getElementById('loading')!.setAttribute('aria-hidden','true');hud.present(world,60);if(platform.loadFailed)hud.toast('旧进度读取失败，原存档已保留，自动保存已暂停');else if(platform.migratedFrom)hud.toast('原有进度已保留：烘焙工坊已迁到农场南侧，路线已更新');},
   present:fps=>{hud.present(world,fps);if(world.time-lastSave>8){save();lastSave=world.time;}},
   event:e=>{platform.play(e.kind==='build'?'build':e.item);if(e.kind==='build')save();}
 });
-new Phaser.Game({type:Phaser.AUTO,parent:'game',backgroundColor:'#97bb71',antialias:true,roundPixels:false,fps:{target:60,limit:60},scale:{mode:Phaser.Scale.RESIZE,width:window.innerWidth,height:window.innerHeight},render:{antialias:true,pixelArt:false,powerPreference:'high-performance'},scene:[farmScene],audio:{noAudio:true}});
+new Phaser.Game({type:Phaser.AUTO,parent:'game',backgroundColor:'#72bf47',antialias:true,roundPixels:false,fps:{target:60,limit:60},scale:{mode:Phaser.Scale.RESIZE,width:window.innerWidth,height:window.innerHeight},render:{antialias:true,pixelArt:false,powerPreference:'high-performance'},scene:[farmScene],audio:{noAudio:true}});
 document.getElementById('goal')!.addEventListener('click',()=>{if(!manualPaused){input?.reset();navigate(world,getGoal(world).target);}});
 document.getElementById('zoom-in')!.addEventListener('click',()=>scene?.mapCamera.zoomBy(1.25));
 document.getElementById('zoom-out')!.addEventListener('click',()=>scene?.mapCamera.zoomBy(1/1.25));
 document.getElementById('map-overview')!.addEventListener('click',()=>{input?.reset();scene?.mapCamera.toggle();});
-for(const kind of ['staff','capacity','operations'])document.getElementById(`${kind}-tab`)!.addEventListener('click',()=>{for(const panel of ['staff','capacity','operations']){document.getElementById(`${panel}-panel`)!.hidden=panel!==kind;document.getElementById(`${panel}-tab`)!.setAttribute('aria-selected',String(panel===kind));}});
-document.getElementById('staff')!.addEventListener('click',()=>{renderStaff(world,hire);renderOperations(world,hire,locate);show(staffMenu);});
-function hire(id:string):void{const before=world.events.length;if(purchaseUpgrade(world,id)){for(const event of world.events.slice(before))scene?.flight(event);save();hud.present(world,60);hud.toast(`${world.upgrades.find(u=>u.id===id)!.label}已完成`);}renderStaff(world,hire);renderOperations(world,hire,locate);}
+for(const kind of ['staff','capacity','operations','dispatch','telemetry'])document.getElementById(`${kind}-tab`)!.addEventListener('click',()=>{for(const panel of ['staff','capacity','operations','dispatch','telemetry']){document.getElementById(`${panel}-panel`)!.hidden=panel!==kind;document.getElementById(`${panel}-tab`)!.setAttribute('aria-selected',String(panel===kind));}});
+function management():void {renderStaff(world,hire);renderOperations(world,hire,locate);renderDispatch(world,hire,(refresh=true)=>{save();hud.present(world,60);if(refresh)management();});renderProductionReport(world,locate);}
+document.getElementById('staff')!.addEventListener('click',()=>{management();show(staffMenu);});
+function hire(id:string):void{const before=world.events.length;if(purchaseUpgrade(world,id)){for(const event of world.events.slice(before))scene?.flight(event);save();hud.present(world,60);hud.toast(id.startsWith('cart_')?'运输推车已升级，容量和运力同步生效':`${world.upgrades.find(u=>u.id===id)!.label}已完成`);}management();}
 function orders():void{renderOrders(world,id=>{if(acceptOrder(world,id)){save();hud.present(world,60);orders();}},()=>{const reward=claimOrder(world);if(reward){save();hud.present(world,60);hud.toast(`订单完成，货款 $${reward} 已到账`);}orders();},()=>locate(ORDER_POINT));}
 document.getElementById('orders')!.addEventListener('click',()=>{orders();show(ordersMenu);});
 document.getElementById('orders-close')!.addEventListener('click',()=>pause(false));ordersMenu.addEventListener('cancel',e=>{e.preventDefault();pause(false);});
 document.getElementById('chapter-map')!.addEventListener('click',()=>{for(const [id,unlock]of [['farm','car_counter'],['market','market_land'],['bakery','bakery_land'],['orders','car_counter']]){const b=document.querySelector(`[data-region="${id}"]`)as HTMLButtonElement;b.disabled=!world.upgrades.some(u=>u.id===unlock&&u.unlocked);}show(regionsMenu);});
-const regions:Record<string,Vec2>={farm:{x:15,z:11},market:{x:30,z:11},bakery:{x:49,z:11},orders:ORDER_POINT};
+const regions:Record<string,Vec2>={...REGION_CENTERS,orders:ORDER_POINT};
 document.querySelectorAll<HTMLButtonElement>('[data-region]').forEach(button=>button.addEventListener('click',()=>locate(regions[button.dataset.region!])));
 document.getElementById('regions-close')!.addEventListener('click',()=>pause(false));regionsMenu.addEventListener('cancel',e=>{e.preventDefault();pause(false);});
 document.getElementById('staff-collect')!.addEventListener('click',()=>{const source=cashSources(world).sort((a,b)=>b.amount-a.amount)[0];pause(false);if(source?.amount)navigate(world,source.at);});

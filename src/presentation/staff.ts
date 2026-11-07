@@ -3,6 +3,7 @@ import {bakeryConfig} from '../domain/bakery.ts';
 import {availableCash} from '../domain/finance.ts';
 import {eligible} from '../domain/chapter2.ts';
 import {JOB_NAMES,TASK_NAMES} from '../domain/logistics.ts';
+import {TASK_TITLES} from '../domain/dispatch.ts';
 import type {World} from '../domain/world.ts';
 export function renderStaff(w:World,purchase:(id:string)=>void):void {
   document.getElementById('staff-balance')!.textContent=`可用余额 $${availableCash(w)} · ATM $${w.bank.cash} · 员工待存 $${w.workers.reduce((n,a)=>n+a.cash,0)}`;
@@ -20,7 +21,7 @@ export function renderStaff(w:World,purchase:(id:string)=>void):void {
   }
   const roster=document.getElementById('staff-roster')!;roster.replaceChildren();
   if(!w.workers.length)roster.textContent='建设第一章收割小队后开始招聘';
-  for(const a of w.workers){const row=document.createElement('div');row.className='roster-row';const cashTasks:Record<string,string>={car_counter:'汽车柜台收款',walk_counter:'步行柜台收款',gift:'礼盒摊收款',truck:'批发货款',cake:'蛋糕摊收款',deposit:'去 ATM 存款'};const task=a.task?(a.job==='cashier'?cashTasks[a.task]:TASK_NAMES[a.task])??a.task:a.moving?'运输中':'待命';row.textContent=`${JOB_NAMES[a.job]??a.job} · ${task}${a.cash?` · 携款 $${a.cash}`:''}`;roster.append(row);}
+  for(const a of w.workers){const row=document.createElement('div');row.className='roster-row';const cashTasks:Record<string,string>={car_counter:'汽车柜台收款',walk_counter:'步行柜台收款',gift:'礼盒摊收款',truck:'批发货款',cake:'蛋糕摊收款',deposit:'去 ATM 存款'};const task=a.task?(a.job==='cashier'?cashTasks[a.task]:TASK_TITLES[a.task]??TASK_NAMES[a.task])??a.task:a.moving?'运输中':'待命';row.textContent=`${JOB_NAMES[a.job]??a.job} · ${task}${a.cash?` · 携款 $${a.cash}`:''}`;roster.append(row);}
   renderCapacity(w,purchase);
 }
 

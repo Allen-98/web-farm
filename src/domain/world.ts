@@ -1,11 +1,15 @@
 import {capacityUpgrades,farmCapacity,applyCapacity,workerCapacity} from './capacity.ts';
+import {cartUpgrades,cartLevel,cartFactor,createDispatch,validateDispatch} from './dispatch.ts';
+import type {DispatchState} from './dispatch.ts';
+import {createTelemetry,measureStart,recordTelemetry,validateTelemetry} from './telemetry.ts';
+import type {TelemetryState} from './telemetry.ts';
 import {operationsUpgrades,cycleSeconds,rescaleClock,FACILITIES} from './operations.ts';
 import {createOrders,validateOrders,deliverOrder,ORDER_POINT,orderReady,TRADE_ITEMS,updateOrders} from './orders.ts';
 import type {OrdersState} from './orders.ts';
 import { bakeryConfig, createBakery, emptyItems, bakeryMode, bakeryInteract, updateBakery, bakeryGoal } from './bakery.ts';
 import type {BakeryState} from './bakery.ts';
 import { availableCash, incomeAccount, spendCash, depositWallet, bankOpen, collectionRate, cashSources, ATM, updateCashier } from './finance.ts';
-import {updateCourier,updateWheatFarmer} from './logistics.ts';
+import {updateCourier,updateWheatFarmer,rankCourierKinds} from './logistics.ts';
 import {validatePreviousWorld} from './previousSave.ts';
 import { chapterConfig, createChapter, eligible, chapterMode, chapterInteract, updateChapter, chapterGoal } from './chapter2.ts';
 import type { ChapterState } from './chapter2.ts';
@@ -13,10 +17,11 @@ import tuning from '../content/tuning.json' with { type: 'json' };
 import map from '../content/map.json' with { type: 'json' };
 import { inventoryUsed, transferItems, produceEgg, completeOrderPack, collectCash, collectStationCash, invest } from './economy.ts';
 import type { Inventory, Vec2, Wallet, Upgrade, Order, Station, Item } from './contracts.ts';
+import {withinMap,fromLinearLayout} from './layout.ts';
 
 export { tuning, map };
 export const DT = 1 / tuning.simulation.tickHz;
-export const CONFIG_VERSION = 'farm-v3.2';
+export const CONFIG_VERSION = 'farm-v3.4';
 export const BOOT_CASH = { x: 12, z: 15.5 };
 export const FEED = { x: 15, z: 5 };
 export const EGG_PICKUP = { x: 12.8, z: 9.4 };
@@ -27,6 +32,7 @@ export interface FarmStation extends Station { order: Order; service: number; se
 export interface FarmUpgrade extends Upgrade { position: Vec2;label?:string;job?:string }
 export interface FxEvent { kind: 'item' | 'build'; item: Item | 'cash'; amount: number; from: Vec2; to: Vec2 }
 export interface World {
+  dispatch:DispatchState;telemetry:TelemetryState;
   orders:OrdersState;
   chapter: ChapterState;bakery:BakeryState;bank:{cash:number;deposited:number};logistics:{eggToPack:number;eggToOven:number;originalToOven:number;flour:number;cake:number};
   version: string; tick: number; time: number; player: Actor; wallet: Wallet; looseCash: { cash: number };
@@ -44,10 +50,11 @@ export function unlocked(w: World, id: string): boolean { return w.upgrades.some
 export function zone(id: string): Vec2 { const p = map.interactionZones.find(p => p.id === id); if (!p) throw new Error(`Unknown zone ${id}`); return { x: p.x, z: p.z }; }
 function actor(id: string, position: Vec2, capacity: number, job = ''): Actor { return { id, cash:0,task:null,deliveries:0,position: point(position), bag: bag(capacity), path: [], facing: { x: 1, z: 1 }, moving: false, job, cooldown: 0, targetCrop: null, credit: 0, delivering: false }; }
 export const MAIN_UPGRADE_COUNT=17;
-export const UPGRADE_SPECS=[...tuning.upgrades.map(u=>({...u,label:LABELS[u.id],position:map.investmentZones.find(z=>z.upgradeId===u.id)!})),...chapterConfig.upgrades,...bakeryConfig.upgrades,...bakeryConfig.automation,...capacityUpgrades,...operationsUpgrades];
+export const UPGRADE_SPECS=[...tuning.upgrades.map(u=>({...u,label:LABELS[u.id],position:map.investmentZones.find(z=>z.upgradeId===u.id)!})),...chapterConfig.upgrades,...bakeryConfig.upgrades,...bakeryConfig.automation,...capacityUpgrades,...operationsUpgrades,...cartUpgrades];
 export function createWorld(): World {
   const field = map.areas.find(a => a.id === 'corn_field')!;
   return {
+    dispatch:createDispatch(),telemetry:createTelemetry(),
     orders:createOrders(),version: CONFIG_VERSION, tick: 0, time: 0, chapter: createChapter(),bakery:createBakery(),bank:{cash:0,deposited:0},logistics:{eggToPack:0,eggToOven:0,originalToOven:0,flour:0,cake:0},
     player: actor('player', map.playerSpawn, tuning.player.inventoryCapacity), wallet: { cash: 0 }, looseCash: { cash: tuning.bootstrap.looseCash },
     feed: bag(tuning.farm.feedCapacity), ground: bag(tuning.farm.eggGroundCapacity),
@@ -61,8 +68,7 @@ export function createWorld(): World {
 }
 
 export function walkable(w: World, p: Vec2): boolean {
-  const bounds=map.walkBounds;
-  if (p.x < bounds.minX || p.x > (unlocked(w,'bakery_land')?bakeryConfig.maxX:unlocked(w,'market_land')?chapterConfig.bounds.maxX:bounds.maxX) || p.z < bounds.minZ || p.z > bounds.maxZ) return false;
+  if(!withinMap(p,unlocked(w,'market_land'),unlocked(w,'bakery_land')))return false;
   for(const b of map.staticBlockers) if(p.x>b.x&&p.x<b.x+b.width&&p.z>b.z&&p.z<b.z+b.height)return false;
   for (const a of map.areas) if (a.role === 'station' && unlocked(w, a.id) && p.x > a.x - 0.25 && p.x < a.x + a.width + 0.25 && p.z > a.z - 0.25 && p.z < a.z + a.height + 0.25) return false;
   for(const b of [...chapterConfig.buildings,...bakeryConfig.buildings])if(unlocked(w,b.id)&&p.x>b.x-.25&&p.x<b.x+b.width+.25&&p.z>b.z-.25&&p.z<b.z+b.height+.25)return false;
@@ -71,7 +77,13 @@ export function walkable(w: World, p: Vec2): boolean {
 /** Half-meter navigation grid; renderer and engine coordinates never enter this pathfinder. */
 export function findPath(w: World, start: Vec2, end: Vec2): Vec2[] {
   const cell = (p: Vec2) => ({ x: Math.round(p.x * 2), z: Math.round(p.z * 2) });
-  const from = cell(start), to = cell(end); const key = (p: Vec2) => `${p.x},${p.z}`;
+  // Pick a reachable grid anchor, including at concave boundaries where simple rounding cuts outside.
+  const anchors=[...new Set([Math.floor(start.x*2),Math.ceil(start.x*2)])].flatMap(x=>
+    [...new Set([Math.floor(start.z*2),Math.ceil(start.z*2)])].map(z=>({x:x/2,z:z/2})))
+    .filter(p=>[start,p,{x:start.x,z:p.z},{x:p.x,z:start.z}].every(q=>walkable(w,q)))
+    .sort((a,b)=>distance(start,a)-distance(start,b));
+  if(!anchors.length)return [];
+  const from = cell(anchors[0]), to = cell(end); const key = (p: Vec2) => `${p.x},${p.z}`;
   let goal = { x: to.x / 2, z: to.z / 2 };
   if (!walkable(w, goal)) return [];
   const queue = [from], parents = new Map<string, Vec2 | null>([[key(from), null]]); let head = 0;
@@ -80,6 +92,8 @@ export function findPath(w: World, start: Vec2, end: Vec2): Vec2[] {
     if (key(current) === key(to)) {
       const result: Vec2[] = []; let cursor: Vec2 | null = current;
       while (cursor && key(cursor) !== key(from)) { result.unshift({ x: cursor.x / 2, z: cursor.z / 2 }); cursor = parents.get(key(cursor)) ?? null; }
+      const first={x:from.x/2,z:from.z/2};
+      if(walkable(w,first)&&distance(start,first)>.001)result.unshift(first);
       if (walkable(w, end)) result.push(point(end));
       return result;
     }
@@ -96,7 +110,8 @@ export function navigate(w: World, target: Vec2): void {
 }
 function followPath(w: World, a: Actor, speed: number, dt: number): void {
   a.moving = false;
-  while (a.path.length && distance(a.position, a.path[0]) < 0.12) a.path.shift();
+  // Finish each grid corner exactly: cutting a corner can enter the L-shaped map's outside edge.
+  while (a.path.length && distance(a.position, a.path[0]) < .0001) a.path.shift();
   if (!a.path.length) return;
   const target = a.path[0], dist = distance(a.position, target), step = Math.min(speed * dt, dist);
   const dx = (target.x - a.position.x) / dist, dz = (target.z - a.position.z) / dist;
@@ -178,28 +193,29 @@ function interact(w: World, dt: number): void {
   else if (mode.startsWith('cash:') && target) { const n = collectStationCash(target, incomeAccount(w), allowance); w.stats.collected += n; fx(w, 'cash', n, zone(target.id === 'car_counter' ? 'car_cash' : 'walk_cash'), a.position); }
 }
 function updateWorker(w: World, a: Actor, dt: number): void {
-  const capacity=farmCapacity(w),rate=['haul','harvest'].includes(a.job)?capacity.haulRate:8*(capacity.coopLevel+1);
+  const capacity=farmCapacity(w),cart=cartLevel(w,a),rate=(['haul','harvest'].includes(a.job)?capacity.haulRate:8*(capacity.coopLevel+1))*(1+cart*.5);
   a.cooldown = Math.max(0, a.cooldown - dt); a.credit = Math.min(Math.max(2,rate*dt*2), a.credit + rate * dt); const allowance = Math.floor(a.credit);
   a.moving = false;
-  const walk=(target:Vec2)=>go(w,a,target,a.job==='cashier'?5.8:4.6,dt),effect=(item:Item|'cash',n:number,from:Vec2,to:Vec2)=>fx(w,item,n,from,to);
+  const walk=(target:Vec2)=>go(w,a,target,(a.job==='cashier'?5.8:4.6)*(1+cart*.1),dt),effect=(item:Item|'cash',n:number,from:Vec2,to:Vec2)=>fx(w,item,n,from,to);
+  const courier=(kinds:Item[])=>{const cargo=kinds.find(k=>a.bag.items[k]>0),committed=w.dispatch.claims[a.id]?.item;if(cargo||committed){updateCourier(w,a,cargo??committed!,allowance,walk,effect);return;}for(const kind of rankCourierKinds(w,a,kinds)){updateCourier(w,a,kind,allowance,walk,effect);if(a.task)return;}};
   if(a.job==='cashier'){updateCashier(w,a,dt,walk);return;}
   if(a.job==='wheat_farmer'){updateWheatFarmer(w,a,dt,allowance,walk,effect);return;}
   if(a.job==='cake_courier'){updateCourier(w,a,'cake',allowance,walk,effect);return;}
   if(a.job==='gift_courier'){updateCourier(w,a,'gift',allowance,walk,effect);return;}
-  if(a.job==='baker'){updateCourier(w,a,a.bag.items.egg||(!a.bag.items.flour&&w.bakery.ovenEgg.items.egg<4&&!w.bakery.flour.items.flour)?'egg':'flour',allowance,walk,effect);return;}
-  if(a.job==='packer'){updateCourier(w,a,a.bag.items.egg||(!a.bag.items.gift&&!w.chapter.output.items.gift)?'egg':'gift',allowance,walk,effect);return;}
+  if(a.job==='baker'){courier(['flour','egg']);return;}
+  if(a.job==='packer'){courier(['gift','egg']);return;}
   if(['car_counter','walk_counter','egg_courier'].includes(a.job)){updateCourier(w,a,'egg',allowance,walk,effect);return;}
   if (a.job === 'harvest' || a.job === 'haul') {
-    if (a.bag.items.corn >= capacity.haulBatch || (a.bag.items.corn >= 4 && w.feed.items.corn < 12)) a.delivering = true;
+    if (a.bag.items.corn >= capacity.haulBatch*cartFactor(w,a) || (a.bag.items.corn >= 4 && w.feed.items.corn < 12)) a.delivering = true;
     if (a.bag.items.corn === 0) a.delivering = false;
     if (a.delivering) {
       if (a.targetCrop !== null) { const c = w.crops[a.targetCrop]; if (c.reservedBy === a.id) c.reservedBy = null; a.targetCrop = null; }
-      go(w, a, FEED, capacity.haulSpeed, dt);
+      go(w, a, FEED, capacity.haulSpeed*(1+cart*.1), dt);
       if (distance(a.position, FEED) < 0.85 && allowance) { const n = transferItems(a.bag, w.feed, 'corn', allowance); a.credit -= allowance; fx(w, 'corn', n, a.position, FEED); }
       return;
     }
     if (a.job === 'haul') {
-      go(w, a, w.machine.position, capacity.haulSpeed, dt);
+      go(w, a, w.machine.position, capacity.haulSpeed*(1+cart*.1), dt);
       if (distance(a.position, w.machine.position) < 1.1 && allowance) { const n = transferItems(w.machine.bag, a.bag, 'corn', allowance); a.credit -= allowance; fx(w, 'corn', n, w.machine.position, a.position); }
       return;
     }
@@ -210,7 +226,7 @@ function updateWorker(w: World, a: Actor, dt: number): void {
       a.targetCrop = crop?.id ?? null; if (crop) crop.reservedBy = a.id;
     }
     if (crop) {
-      go(w, a, crop.position, 3.1, dt);
+      go(w, a, crop.position, 3.1*(1+cart*.1), dt);
       if (distance(a.position, crop.position) < 0.6 && !a.cooldown) { harvested(w, crop, a.bag, a.position); a.cooldown = 1; a.targetCrop = null; }
     }
   }
@@ -245,6 +261,7 @@ function productionAndSales(w: World, dt: number): void {
 export function stepWorld(w: World, move: Vec2 = { x: 0, z: 0 }): void {
   const dt=DT;
   w.events = []; w.tick++; w.time = w.tick * DT;
+  const measured=measureStart(w);
   if (Math.hypot(move.x, move.z) > 0.01) {
     w.player.path = []; w.navigationTarget = null;
     const len = Math.max(1, Math.hypot(move.x, move.z)), dx = move.x / len * tuning.player.moveMetersPerSecond * dt, dz = move.z / len * tuning.player.moveMetersPerSecond * dt;
@@ -256,6 +273,7 @@ export function stepWorld(w: World, move: Vec2 = { x: 0, z: 0 }): void {
   interact(w, dt);
   for (const a of w.workers) updateWorker(w, a, dt);
   updateMachine(w, dt); productionAndSales(w, dt);updateChapter(w,dt,(item,n,from,to)=>fx(w,item,n,from,to));updateBakery(w,dt,(item,n,from,to)=>fx(w,item,n,from,to));updateOrders(w);
+  recordTelemetry(w,dt,measured);
 }
 export function getGoal(w: World): Goal {
   const next = nextUpgrade(w), chapterTwo=unlocked(w,'walk_clerk'), stage=unlocked(w,'packer')?`第三章 · 烘焙工坊 ${w.upgrades.slice(12,17).filter(u=>u.unlocked).length} / 5`:chapterTwo?`第二章 · 乡间集市 ${w.upgrades.slice(7,12).filter(u=>u.unlocked).length} / 5`:`第一章 · 鸡蛋农场 ${Math.min(7,w.upgrades.filter(u=>u.unlocked).length+1)} / 7`;
@@ -300,10 +318,10 @@ export function purchaseUpgrade(w:World,id:string):boolean {
   const result=invest({cash:availableCash(w)},u,u.cost-u.paid,new Set(w.upgrades.filter(u=>u.unlocked).map(u=>u.id)));
   spendCash(w,result.paid);if(result.completed){applyUnlock(w,u);if(facility)rescaleClock(w,facility.id,oldSeconds);}return result.completed;
 }
-export function validateWorld(w:World,legacyV3:boolean|'v3.1'=false):void {
-  if(w.version!==(legacyV3==='v3.1'?'farm-v3.1':legacyV3?'farm-v3.0':CONFIG_VERSION)||!Number.isSafeInteger(w.tick)||w.tick<0||w.time!==w.tick*DT)throw new Error('unsupported save');
+export function validateWorld(w:World,legacyV3:boolean|'v3.1'|'v3.2'=false):void {
+  if(w.version!==(legacyV3==='v3.2'?'farm-v3.2':legacyV3==='v3.1'?'farm-v3.1':legacyV3?'farm-v3.0':CONFIG_VERSION)||!Number.isSafeInteger(w.tick)||w.tick<0||w.time!==w.tick*DT)throw new Error('unsupported save');
   const f=farmCapacity(w);
-  if(w.crops.length!==48||w.production.length!==(legacyV3===true?6:f.chickens)||w.stations.length!==2||w.upgrades.length!==(legacyV3==='v3.1'?30:legacyV3?24:UPGRADE_SPECS.length)||w.bakery.crops.length!==25)throw new Error('invalid world shape');
+  if(w.crops.length!==48||w.production.length!==(legacyV3===true?6:f.chickens)||w.stations.length!==2||w.upgrades.length!==(legacyV3==='v3.2'?44:legacyV3==='v3.1'?30:legacyV3?24:UPGRADE_SPECS.length)||w.bakery.crops.length!==25)throw new Error('invalid world shape');
   const finite=(v:unknown):void=>{if(typeof v==='number'&&!Number.isFinite(v))throw new Error('non-finite value');if(v&&typeof v==='object')for(const child of Object.values(v))finite(child);};finite(w);
   const b=w.bakery,c=w.chapter;
   const integers=[w.wallet.cash,w.bank.cash,w.bank.deposited,w.looseCash.cash,...Object.values(w.stats),...Object.values(w.logistics),b.harvested,b.milled,b.baked,b.sold,b.pendingCash,c.packed,c.retailSold,c.wholesaleSold,c.pendingCash,c.truck.loaded,c.truck.delivered,c.truck.pendingCash];
@@ -326,8 +344,9 @@ export function validateWorld(w:World,legacyV3:boolean|'v3.1'=false):void {
   const timers:[[number,number],[number,number],[number,number],[number,number],[number,number],[number,number]]=[[c.progress,cycleSeconds(w,'pack_table')],[c.retailTime,cycleSeconds(w,'gift_stall')],[c.truck.cooldown,chapterConfig.wholesale.returnSeconds],[b.millTime,cycleSeconds(w,'mill')],[b.ovenTime,cycleSeconds(w,'oven')],[b.saleTime,cycleSeconds(w,'cake_stall')]];
   if(timers.some(([value,max])=>value<0||value>max)||c.truck.loaded>=12||w.production.some(n=>n<0||n>tuning.farm.productionSecondsPerChicken))throw new Error('invalid production clock');
   const actors=[w.player,...w.workers],held=(item:Item)=>actors.reduce((n,a)=>n+a.bag.items[item],0);
-  if(!legacyV3)validateOrders(w);
-  const ordered=(item:'egg'|'gift'|'cake')=>legacyV3?0:w.orders.delivered[item]+(w.orders.active?.stock.items[item]??0);
+  if(!legacyV3){validateDispatch(w);validateTelemetry(w);}
+  if(!legacyV3||legacyV3==='v3.2')validateOrders(w);
+  const ordered=(item:'egg'|'gift'|'cake')=>legacyV3&&legacyV3!=='v3.2'?0:w.orders.delivered[item]+(w.orders.active?.stock.items[item]??0);
   if(w.stats.harvested!==w.feed.items.corn+w.machine.bag.items.corn+held('corn')+w.stats.produced)throw new Error('corn conservation failed');
   if(w.stats.produced!==ordered('egg')+w.ground.items.egg+held('egg')+w.stations.reduce((n,s)=>n+s.stock.items.egg,0)+c.input.items.egg+c.packed*6+b.ovenEgg.items.egg+b.baked*2+w.stats.eggsSold)throw new Error('egg conservation failed');
   if(c.packed!==ordered('gift')+held('gift')+c.output.items.gift+c.stock.items.gift+c.truck.loaded+c.retailSold+c.wholesaleSold||c.wholesaleSold!==c.truck.delivered*12)throw new Error('gift conservation failed');
@@ -340,14 +359,36 @@ export function validateWorld(w:World,legacyV3:boolean|'v3.1'=false):void {
   only(w.feed,'corn');only(w.machine.bag,'corn');only(w.ground,'egg');w.stations.forEach(s=>only(s.stock,'egg'));only(c.input,'egg');only(c.output,'gift');only(c.stock,'gift');only(b.millInput,'wheat');only(b.flour,'flour');only(b.ovenFlour,'flour');only(b.ovenEgg,'egg');only(b.cakes,'cake');only(b.stock,'cake');
 }
 /** Old economies are validated before adding empty inventories, roles and construction nodes. */
+function relocateLinearMap(w:World):World {
+  for(const u of w.upgrades)u.position=point(UPGRADE_SPECS.find(s=>s.id===u.id)!.position);
+  for(const crop of w.bakery.crops)crop.position={x:bakeryConfig.field.x+.5+(crop.id%5)*1.1,z:bakeryConfig.field.z+.5+Math.floor(crop.id/5)*1.1};
+  for(const a of [w.player,...w.workers]){
+    a.position=fromLinearLayout(a.position);a.path=[];a.moving=false;
+    if(!walkable(w,a.position)){
+      // An actor in the former inter-region gap is placed on the nearest accessible tile.
+      let nearest:Vec2|null=null,best=Infinity;
+      for(let z=1.5;z<=bakeryConfig.area.z+bakeryConfig.area.height;z+=.5)for(let x=7;x<=chapterConfig.bounds.maxX;x+=.5){
+        const p={x,z},d=distance(a.position,p);if(d<best&&walkable(w,p)){nearest=p;best=d;}
+      }
+      if(nearest)a.position=nearest;
+    }
+  }
+  w.navigationTarget=null;w.events=[];w.mode='';w.credit=0;w.dwell=0;
+  return w;
+}
 export function migrateWorld(value:World):World {
   if(value.version===CONFIG_VERSION){validateWorld(value);return value;}
-  if(value.version==='farm-v3.0'||value.version==='farm-v3.1'){
-    validateWorld(value,value.version==='farm-v3.1'?'v3.1':true);
+  if(value.version==='farm-v3.3'){
+    const w=structuredClone(value);w.version=CONFIG_VERSION;validateWorld(w);
+    relocateLinearMap(w);validateWorld(w);return w;
+  }
+  if(value.version==='farm-v3.0'||value.version==='farm-v3.1'||value.version==='farm-v3.2'){
+    validateWorld(value,value.version==='farm-v3.2'?'v3.2':value.version==='farm-v3.1'?'v3.1':true);
     const w=structuredClone(value);
     for(const spec of UPGRADE_SPECS.slice(w.upgrades.length))w.upgrades.push({...spec,requires:[...spec.requires],paid:0,unlocked:false,position:{...spec.position}});
-    w.orders=createOrders();
-    w.version=CONFIG_VERSION;validateWorld(w);return w;
+    if(value.version!=='farm-v3.2')w.orders=createOrders();
+    w.dispatch=createDispatch();w.telemetry=createTelemetry();
+    w.version=CONFIG_VERSION;relocateLinearMap(w);validateWorld(w);return w;
   }
   if(!['farm-v1.0','farm-v2.0'].includes(value.version))throw new Error('unsupported save');
   validatePreviousWorld(value,value.version==='farm-v1.0');
@@ -360,5 +401,5 @@ export function migrateWorld(value:World):World {
   for(const store of [w.player.bag,w.feed,w.ground,w.machine.bag,...w.workers.map(a=>a.bag),...w.stations.map(s=>s.stock),w.chapter.input,w.chapter.output,w.chapter.stock])store.items={...emptyItems(),...store.items};
   for(const a of [w.player,...w.workers]){a.cash=0;a.task=null;a.deliveries=0;a.path=[];}
   for(const spec of UPGRADE_SPECS.slice(12))w.upgrades.push({...spec,requires:[...spec.requires],paid:0,unlocked:false,position:{x:spec.position.x,z:spec.position.z}});
-  w.orders=createOrders();w.cashRate=0;w.version=CONFIG_VERSION;validateWorld(w);return w;
+  w.orders=createOrders();w.dispatch=createDispatch();w.telemetry=createTelemetry();w.cashRate=0;w.version=CONFIG_VERSION;relocateLinearMap(w);validateWorld(w);return w;
 }

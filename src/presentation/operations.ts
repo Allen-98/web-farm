@@ -35,7 +35,7 @@ export function renderOrders(w:World,accept:(id:string)=>void,claim:()=>void,del
     }
     const payout=document.createElement('p');payout.textContent=`基础货款 $${a.offer.reward}${a.offer.bonus?` · 准时额外 +$${a.offer.bonus}`:''}`;card.append(payout);
     const action=document.createElement('button');action.className='primary';action.textContent=orderReady(w)?`领取 $${a.offer.reward+(rushRemaining(w)>0?a.offer.bonus:0)}`:'前往交货区 ↗';action.id='order-action';action.addEventListener('click',orderReady(w)?claim:deliver);card.append(action);
-    const note=document.createElement('small');note.textContent='走到订单板前自动卸下背包中的所需货物；店员、运蛋员、礼盒配送和蛋糕配送会优先协助。缺少的配送岗位可在经营面板招聘。';card.append(note);root.append(card);
+    const note=document.createElement('small');note.textContent='走到订单板前自动卸下背包中的所需货物。员工按物流策略和分工协助送货；想加快履约，可在经营 → 物流调度选择订单优先。';card.append(note);root.append(card);
   } else {
     const offers=orderOffers(w);
     if(!offers.length)root.textContent='建设汽车柜台后开放订单。';

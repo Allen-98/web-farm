@@ -1,0 +1,471 @@
+{
+  "building.coop": {
+    "page": 0,
+    "x": 2,
+    "y": 2,
+    "width": 800,
+    "height": 600
+  },
+  "building.mill": {
+    "page": 0,
+    "x": 806,
+    "y": 2,
+    "width": 540,
+    "height": 480
+  },
+  "building.counter": {
+    "page": 0,
+    "x": 1350,
+    "y": 2,
+    "width": 600,
+    "height": 460
+  },
+  "building.gift-stall": {
+    "page": 0,
+    "x": 2,
+    "y": 606,
+    "width": 600,
+    "height": 460
+  },
+  "building.cake-stall": {
+    "page": 0,
+    "x": 606,
+    "y": 606,
+    "width": 600,
+    "height": 460
+  },
+  "vehicle.wholesale": {
+    "page": 0,
+    "x": 1210,
+    "y": 606,
+    "width": 740,
+    "height": 460
+  },
+  "environment.pine": {
+    "page": 0,
+    "x": 2,
+    "y": 1070,
+    "width": 280,
+    "height": 440
+  },
+  "building.oven": {
+    "page": 0,
+    "x": 286,
+    "y": 1070,
+    "width": 520,
+    "height": 420
+  },
+  "building.pack-table": {
+    "page": 0,
+    "x": 810,
+    "y": 1070,
+    "width": 600,
+    "height": 380
+  },
+  "vehicle.harvester": {
+    "page": 0,
+    "x": 1414,
+    "y": 1070,
+    "width": 340,
+    "height": 290
+  },
+  "building.atm": {
+    "page": 0,
+    "x": 1758,
+    "y": 1070,
+    "width": 192,
+    "height": 264
+  },
+  "vehicle.car.red": {
+    "page": 0,
+    "x": 2,
+    "y": 1514,
+    "width": 230,
+    "height": 246
+  },
+  "vehicle.car.blue": {
+    "page": 0,
+    "x": 236,
+    "y": 1514,
+    "width": 230,
+    "height": 246
+  },
+  "vehicle.car.gold": {
+    "page": 0,
+    "x": 470,
+    "y": 1514,
+    "width": 230,
+    "height": 246
+  },
+  "vehicle.car.plum": {
+    "page": 0,
+    "x": 704,
+    "y": 1514,
+    "width": 230,
+    "height": 246
+  },
+  "crop.corn": {
+    "page": 0,
+    "x": 938,
+    "y": 1514,
+    "width": 152,
+    "height": 236
+  },
+  "actor.player.0.0": {
+    "page": 0,
+    "x": 1094,
+    "y": 1514,
+    "width": 160,
+    "height": 220
+  },
+  "actor.player.0.1": {
+    "page": 0,
+    "x": 1258,
+    "y": 1514,
+    "width": 160,
+    "height": 220
+  },
+  "actor.player.1.0": {
+    "page": 0,
+    "x": 1422,
+    "y": 1514,
+    "width": 160,
+    "height": 220
+  },
+  "actor.player.1.1": {
+    "page": 0,
+    "x": 1586,
+    "y": 1514,
+    "width": 160,
+    "height": 220
+  },
+  "actor.player.2.0": {
+    "page": 0,
+    "x": 1750,
+    "y": 1514,
+    "width": 160,
+    "height": 220
+  },
+  "actor.player.2.1": {
+    "page": 0,
+    "x": 2,
+    "y": 1764,
+    "width": 160,
+    "height": 220
+  },
+  "actor.player.3.0": {
+    "page": 0,
+    "x": 166,
+    "y": 1764,
+    "width": 160,
+    "height": 220
+  },
+  "actor.player.3.1": {
+    "page": 0,
+    "x": 330,
+    "y": 1764,
+    "width": 160,
+    "height": 220
+  },
+  "actor.harvest.0.0": {
+    "page": 0,
+    "x": 494,
+    "y": 1764,
+    "width": 160,
+    "height": 220
+  },
+  "actor.harvest.0.1": {
+    "page": 0,
+    "x": 658,
+    "y": 1764,
+    "width": 160,
+    "height": 220
+  },
+  "actor.harvest.1.0": {
+    "page": 0,
+    "x": 822,
+    "y": 1764,
+    "width": 160,
+    "height": 220
+  },
+  "actor.harvest.1.1": {
+    "page": 0,
+    "x": 986,
+    "y": 1764,
+    "width": 160,
+    "height": 220
+  },
+  "actor.harvest.2.0": {
+    "page": 0,
+    "x": 1150,
+    "y": 1764,
+    "width": 160,
+    "height": 220
+  },
+  "actor.harvest.2.1": {
+    "page": 0,
+    "x": 1314,
+    "y": 1764,
+    "width": 160,
+    "height": 220
+  },
+  "actor.harvest.3.0": {
+    "page": 0,
+    "x": 1478,
+    "y": 1764,
+    "width": 160,
+    "height": 220
+  },
+  "actor.harvest.3.1": {
+    "page": 0,
+    "x": 1642,
+    "y": 1764,
+    "width": 160,
+    "height": 220
+  },
+  "actor.clerk.0.0": {
+    "page": 0,
+    "x": 1806,
+    "y": 1764,
+    "width": 160,
+    "height": 220
+  },
+  "actor.clerk.0.1": {
+    "page": 1,
+    "x": 2,
+    "y": 2,
+    "width": 160,
+    "height": 220
+  },
+  "actor.clerk.1.0": {
+    "page": 1,
+    "x": 166,
+    "y": 2,
+    "width": 160,
+    "height": 220
+  },
+  "actor.clerk.1.1": {
+    "page": 1,
+    "x": 330,
+    "y": 2,
+    "width": 160,
+    "height": 220
+  },
+  "actor.clerk.2.0": {
+    "page": 1,
+    "x": 494,
+    "y": 2,
+    "width": 160,
+    "height": 220
+  },
+  "actor.clerk.2.1": {
+    "page": 1,
+    "x": 658,
+    "y": 2,
+    "width": 160,
+    "height": 220
+  },
+  "actor.clerk.3.0": {
+    "page": 1,
+    "x": 822,
+    "y": 2,
+    "width": 160,
+    "height": 220
+  },
+  "actor.clerk.3.1": {
+    "page": 1,
+    "x": 986,
+    "y": 2,
+    "width": 160,
+    "height": 220
+  },
+  "actor.customer.0.0": {
+    "page": 1,
+    "x": 1150,
+    "y": 2,
+    "width": 160,
+    "height": 220
+  },
+  "actor.customer.0.1": {
+    "page": 1,
+    "x": 1314,
+    "y": 2,
+    "width": 160,
+    "height": 220
+  },
+  "actor.customer.1.0": {
+    "page": 1,
+    "x": 1478,
+    "y": 2,
+    "width": 160,
+    "height": 220
+  },
+  "actor.customer.1.1": {
+    "page": 1,
+    "x": 1642,
+    "y": 2,
+    "width": 160,
+    "height": 220
+  },
+  "actor.customer.2.0": {
+    "page": 1,
+    "x": 1806,
+    "y": 2,
+    "width": 160,
+    "height": 220
+  },
+  "actor.customer.2.1": {
+    "page": 1,
+    "x": 2,
+    "y": 226,
+    "width": 160,
+    "height": 220
+  },
+  "actor.customer.3.0": {
+    "page": 1,
+    "x": 166,
+    "y": 226,
+    "width": 160,
+    "height": 220
+  },
+  "actor.customer.3.1": {
+    "page": 1,
+    "x": 330,
+    "y": 226,
+    "width": 160,
+    "height": 220
+  },
+  "actor.customer2.0.0": {
+    "page": 1,
+    "x": 494,
+    "y": 226,
+    "width": 160,
+    "height": 220
+  },
+  "actor.customer2.0.1": {
+    "page": 1,
+    "x": 658,
+    "y": 226,
+    "width": 160,
+    "height": 220
+  },
+  "actor.customer2.1.0": {
+    "page": 1,
+    "x": 822,
+    "y": 226,
+    "width": 160,
+    "height": 220
+  },
+  "actor.customer2.1.1": {
+    "page": 1,
+    "x": 986,
+    "y": 226,
+    "width": 160,
+    "height": 220
+  },
+  "actor.customer2.2.0": {
+    "page": 1,
+    "x": 1150,
+    "y": 226,
+    "width": 160,
+    "height": 220
+  },
+  "actor.customer2.2.1": {
+    "page": 1,
+    "x": 1314,
+    "y": 226,
+    "width": 160,
+    "height": 220
+  },
+  "actor.customer2.3.0": {
+    "page": 1,
+    "x": 1478,
+    "y": 226,
+    "width": 160,
+    "height": 220
+  },
+  "actor.customer2.3.1": {
+    "page": 1,
+    "x": 1642,
+    "y": 226,
+    "width": 160,
+    "height": 220
+  },
+  "crop.wheat": {
+    "page": 1,
+    "x": 1806,
+    "y": 226,
+    "width": 128,
+    "height": 200
+  },
+  "animal.chicken": {
+    "page": 1,
+    "x": 2,
+    "y": 450,
+    "width": 120,
+    "height": 130
+  },
+  "environment.garden": {
+    "page": 1,
+    "x": 126,
+    "y": 450,
+    "width": 240,
+    "height": 124
+  },
+  "resource.flour": {
+    "page": 1,
+    "x": 370,
+    "y": 450,
+    "width": 84,
+    "height": 96
+  },
+  "resource.cake": {
+    "page": 1,
+    "x": 458,
+    "y": 450,
+    "width": 108,
+    "height": 86
+  },
+  "resource.gift-box": {
+    "page": 1,
+    "x": 570,
+    "y": 450,
+    "width": 116,
+    "height": 80
+  },
+  "resource.egg": {
+    "page": 1,
+    "x": 690,
+    "y": 450,
+    "width": 56,
+    "height": 68
+  },
+  "resource.egg-stack": {
+    "page": 1,
+    "x": 750,
+    "y": 450,
+    "width": 72,
+    "height": 48
+  },
+  "resource.wheat": {
+    "page": 1,
+    "x": 826,
+    "y": 450,
+    "width": 80,
+    "height": 48
+  },
+  "resource.cash": {
+    "page": 1,
+    "x": 910,
+    "y": 450,
+    "width": 80,
+    "height": 38
+  },
+  "resource.corn-stack": {
+    "page": 1,
+    "x": 994,
+    "y": 450,
+    "width": 68,
+    "height": 30
+  }
+}

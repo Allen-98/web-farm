@@ -1,3 +1,4 @@
+import bakery from '../content/chapter3.json' with {type:'json'};
 import type {World} from './world.ts';
 import type {Vec2} from './contracts.ts';
 
@@ -6,9 +7,9 @@ export const FACILITIES = [
   {id:'walk_counter',name:'步行柜台',seconds:1.2,cost:200,position:{x:18,z:16.5}},
   {id:'pack_table',name:'包装台',seconds:2.4,cost:350,position:{x:28,z:9}},
   {id:'gift_stall',name:'礼盒摊',seconds:2,cost:400,position:{x:31.5,z:16}},
-  {id:'mill',name:'磨坊',seconds:2,cost:500,position:{x:44,z:15}},
-  {id:'oven',name:'烤炉',seconds:4,cost:650,position:{x:53,z:9.5}},
-  {id:'cake_stall',name:'蛋糕摊',seconds:2.5,cost:750,position:{x:52,z:17}}
+  {id:'mill',name:'磨坊',seconds:2,cost:500,position:bakery.points.millInput},
+  {id:'oven',name:'烤炉',seconds:4,cost:650,position:bakery.points.eggInput},
+  {id:'cake_stall',name:'蛋糕摊',seconds:2.5,cost:750,position:bakery.points.cakeSupply}
 ] as const;
 export const operationsUpgrades=FACILITIES.flatMap(f=>[1,2].map(level=>({
   id:`speed_${f.id}_${level}`,label:`${f.name} · ${level===1?'提速':'精工'}`,

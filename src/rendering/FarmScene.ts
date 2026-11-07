@@ -1,6 +1,7 @@
 import {MapCamera} from './MapCamera.ts';
 import {OrderBoardView} from './OrderBoardView.ts';
 import {farmCapacity} from '../domain/capacity.ts';
+import {cartLevel} from '../domain/dispatch.ts';
 import { BakeryView, BAKERY_ASSETS } from './BakeryView.ts';
 import { bakeryConfig } from '../domain/bakery.ts';
 import { JOB_NAMES } from '../domain/logistics.ts';
@@ -8,6 +9,9 @@ import {bankOpen} from '../domain/finance.ts';
 import { ChapterView, GIFT } from './ChapterView.ts';
 import { chapterConfig } from '../domain/chapter2.ts';
 import Phaser from 'phaser';
+import {PALETTE,WORLD_TEXT} from './illustration.ts';
+import {frameMeadow} from './landscape.ts';
+import {preloadVolumeArt,releaseVolumeArt} from './volumeArt.ts';
 import { createArt, createTerrain, ASSETS } from './art.ts';
 import { project, unproject, screenDirection } from './projection.ts';
 import { stepWorld, getGoal, unlocked, nextUpgrade, zone, BOOT_CASH, FEED, DT } from '../domain/world.ts';
@@ -27,10 +31,10 @@ class StackView {
   constructor(scene: Phaser.Scene, root: Phaser.GameObjects.Container) {
     this.images = Array.from({ length: 72 }, () => { const image = scene.add.image(0,0,ASSETS.cash).setVisible(false); root.add(image); return image; });
   }
-  update(a: Actor, cash: number, time: number): void {
+  update(a: Actor, cash: number, time: number,cart=false,offsetX=0,offsetY=0): void {
     const layers=[...Array(Math.ceil(a.bag.items.corn/1.7)).fill(ASSETS.cornUnit),...Array(Math.ceil(a.bag.items.egg/1.7)).fill(ASSETS.eggUnit),...Array(a.bag.items.gift).fill(GIFT),...Array(Math.ceil(a.bag.items.wheat/2)).fill(BAKERY_ASSETS.wheatUnit),...Array(a.bag.items.flour).fill(BAKERY_ASSETS.flour),...Array(a.bag.items.cake).fill(BAKERY_ASSETS.cake)].slice(0,36);
     const sway=Math.sin(time*7)*(a.moving?1.7:.3),money=Math.min(a.job==='cashier'?10:18,Math.ceil(cash/(a.job==='cashier'?200:Math.max(6,cash/18))));
-    for(let i=0;i<72;i++){const image=this.images[i];if(i<layers.length)image.setVisible(true).setTexture(layers[i]).setScale(layers[i]===BAKERY_ASSETS.flour?.47:layers[i]===GIFT||layers[i]===BAKERY_ASSETS.cake?.6:.8).setPosition(-10+sway*(1+i*.07),-30-i*6);else if(i>=36&&i<36+money)image.setVisible(true).setTexture(ASSETS.cash).setScale(.8).setPosition(layers.length?17:0,-29-(i-36)*5+sway);else image.setVisible(false);}
+    for(let i=0;i<72;i++){const image=this.images[i];if(i<Math.min(cart?14:36,layers.length))image.setVisible(true).setTexture(layers[i]).setScale(layers[i]===BAKERY_ASSETS.flour?.47:layers[i]===GIFT||layers[i]===BAKERY_ASSETS.cake?.6:.8).setPosition((cart?offsetX:-10)+sway*(1+i*.07),(cart?offsetY-10:-30)-i*(cart?3.5:6));else if(i>=36&&i<36+money)image.setVisible(true).setTexture(ASSETS.cash).setScale(.8).setPosition(layers.length?17:0,-29-(i-36)*5+sway);else image.setVisible(false);}
 
   }
 }
@@ -39,11 +43,16 @@ class ActorView {
   body: Phaser.GameObjects.Image;
   stack: StackView;
   ring?: Phaser.GameObjects.Ellipse;
+  cart:Phaser.GameObjects.Container;
+  cartCount:Phaser.GameObjects.Text;
   constructor(scene: Phaser.Scene, a: Actor) {
     this.root=scene.add.container(0,0);
     if(a.id==='player'){this.ring=scene.add.ellipse(0,-1,39,18,0xc8efbe,.22).setStrokeStyle(2,0xf8f9d6,.8);this.root.add(this.ring);}
+    const g=scene.add.graphics();g.fillStyle(0x425344).fillEllipse(-12,9,8,12).fillEllipse(13,9,8,12);g.lineStyle(3,0x6e4f31).lineBetween(13,-2,30,-13);g.fillStyle(0x8f633a).fillPoints([{x:-24,y:-8},{x:0,y:-19},{x:24,y:-8},{x:0,y:5}],true);g.fillStyle(0xcda568).fillPoints([{x:-24,y:-8},{x:0,y:5},{x:0,y:-5},{x:-24,y:-18}],true);g.fillStyle(0xb98d50).fillPoints([{x:0,y:5},{x:24,y:-8},{x:24,y:-18},{x:0,y:-5}],true);g.lineStyle(2,0xf0d69c).lineBetween(-24,-18,0,-5).lineBetween(0,-5,24,-18);
+    this.cart=scene.add.container(0,0,[g]).setVisible(false);this.root.add(this.cart);
     this.stack=new StackView(scene,this.root);
     this.body=scene.add.image(0,0,'actor.player.0.0').setOrigin(.5,100/110).setScale(.59);this.root.add(this.body);if(JOB_NAMES[a.job])this.root.add(scene.add.text(0,13,JOB_NAMES[a.job],{fontFamily:'Microsoft YaHei',fontSize:'10px',color:'#fff4d5',stroke:'#516e49',strokeThickness:3}).setOrigin(.5));
+    this.cartCount=scene.add.text(0,0,'',{fontFamily:'Microsoft YaHei',fontSize:'10px',color:'#fff4d5',backgroundColor:'#476347dd',padding:{x:4,y:2}}).setOrigin(.5).setVisible(false);this.root.add(this.cartCount);
   }
   update(a: Actor, w: World): void {
     const p=project(a.position), v=project(a.facing);
@@ -52,14 +61,18 @@ class ActorView {
     const frame=a.moving?Math.floor(w.time*9)%2:0;
     this.body.setTexture(`actor.${role}.${dir}.${frame}`).setY(a.moving?Math.sin(w.time*18)*.8:0);
     this.root.setPosition(p.x,p.y).setDepth(p.y+10);
-    this.stack.update(a,a.id==='player'?(bankOpen(w)?0:w.wallet.cash):a.cash,w.time);
+    const cart=cartLevel(w,a)>0,cx=v.x>=0?-29:29,cy=v.y>=0?-1:15,count=Object.values(a.bag.items).reduce((n,v)=>n+v,0);
+    this.cart.setVisible(cart).setPosition(cx,cy).setScale(v.x>=0?1:-1,1);
+    this.cartCount.setVisible(cart&&count>0).setText(`×${count}`).setPosition(cx,cy-63);
+    this.stack.update(a,a.id==='player'?(bankOpen(w)?0:w.wallet.cash):a.cash,w.time,cart,cx,cy);
     this.ring?.setAlpha(.65+Math.sin(w.time*3)*.15);
   }
 }
 interface Flight { image: Phaser.GameObjects.Image; from: {x:number;y:number}; to: {x:number;y:number}; t: number; duration: number; star?: boolean }
-const TEXT: Phaser.Types.GameObjects.Text.TextStyle={fontFamily:'"Microsoft YaHei", "PingFang SC", sans-serif',fontSize:'13px',fontStyle:'bold',color:'#fffbe3',stroke:'#4f633f',strokeThickness:3};
+const TEXT: Phaser.Types.GameObjects.Text.TextStyle={...WORLD_TEXT,fontStyle:'bold'};
 
 export class FarmScene extends Phaser.Scene {
+  meadow!:Phaser.GameObjects.TileSprite;
   orderBoard!:OrderBoardView;
   mapCamera!:MapCamera;
   cornLabel!:Phaser.GameObjects.Text;
@@ -88,37 +101,42 @@ export class FarmScene extends Phaser.Scene {
   flights:Flight[]=[];
   freeFlights:Phaser.GameObjects.Image[]=[];
   accumulator=0;
+  reducedMotion=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   hudTime=0;
   frames=0;
   fpsAt=0;
   renderedFps=60;
   constructor(ports: ScenePorts) { super('Farm');this.ports=ports; }
+  preload():void {preloadVolumeArt(this);}
   create():void {
-    createArt(this);createTerrain(this);this.chapterView=new ChapterView(this);this.bakeryView=new BakeryView(this);this.orderBoard=new OrderBoardView(this);
-    this.cameras.main.setBackgroundColor('#97bb71');
+    createArt(this);this.meadow=createTerrain(this);this.chapterView=new ChapterView(this);this.bakeryView=new BakeryView(this);releaseVolumeArt(this);this.orderBoard=new OrderBoardView(this);
+    this.cameras.main.setBackgroundColor(PALETTE.meadow);
     const w=this.ports.world();
     const coop=project({x:11,z:4.5});this.add.image(coop.x,coop.y,ASSETS.coop).setOrigin(.5,190/300).setDepth(coop.y+10).setScale(.91);
-    for(let i=0;i<24;i++){const p=project({x:8.7+(i%6)*.78,z:3.1+Math.floor(i/6)*.7},43);this.chickens.push(this.add.image(p.x,p.y,'animal.chicken').setOrigin(.5,.9).setScale(.42).setDepth(coop.y+15).setVisible(i<w.production.length));}
+    for(let i=0;i<24;i++){const col=i%6,row=(Math.floor(i/6)+(i%2)*2)%4,x=coop.x-25+col*15-row*7,y=coop.y-15+col*7.9+row*3.7;this.chickens.push(this.add.image(x,y,'animal.chicken').setOrigin(.5,.9).setScale(.40).setDepth(coop.y+15).setVisible(i<w.production.length));}
     for(const crop of w.crops) {const p=project(crop.position);this.crops.push(this.add.image(p.x,p.y,ASSETS.corn).setOrigin(.5,.95).setScale(.52).setDepth(p.y));}
     const random=(n:number)=>{const v=Math.sin(n*127.1+311.7)*43758.5453;return v-Math.floor(v);};
     for(let i=0;i<180;i++) {const x=8.3+random(i*2)*5.3,z=7.3+random(i*2+1)*3.3,p=project({x,z});this.eggs.push(this.add.image(p.x,p.y,ASSETS.egg).setOrigin(.5,.85).setScale(.61).setDepth(p.y+1).setVisible(false));}
     for(let i=0;i<18;i++){const p=project({x:12.6+(i%6)*.35,z:5.45+Math.floor(i/6)*.12},28);this.feedCorn.push(this.add.image(p.x,p.y,ASSETS.cornUnit).setScale(.7).setDepth(coop.y+17).setVisible(false));}
-    for(const [x,z,s]of [[0,2,.8],[0,8,.75],[0,15,.86],[0,22,.7],[9,23,.68],[11,24,.8],[65,5,.8],[65,11,.75],[65,17,.9],[26,23,.75],[5,-1,.7],[12,-1,.8],[20,-1,.7]]){const p=project({x,z});this.add.image(p.x,p.y,ASSETS.tree).setOrigin(.5,.93).setScale(s).setDepth(p.y+1);}
+    for(const [x,z,s]of [[0,2,.8],[0,8,.75],[0,15,.86],[0,22,.7],[5.5,27,.68],[5.5,34,.8],[43,5,.8],[43,11,.75],[43,17,.9],[27.5,27,.75],[10,38,.75],[19,38,.8],[27,35,.7],[5,-1,.7],[12,-1,.8],[20,-1,.7]]){const p=project({x,z});this.add.image(p.x,p.y,ASSETS.tree).setOrigin(.5,.93).setScale(s).setDepth(p.y+1);}
+    for(const [x,z,scale]of [[8,-.5,.8],[16,-.5,.7],[24,-.5,.8],[6,21.8,.8],[27.5,22,.8],[30,0,.9],[39,19.7,.8],[38,0,.75],[8,37,.9],[25,37,.9]]){
+      const p=project({x,z});this.add.image(p.x,p.y,'environment.garden').setOrigin(.5,.8).setScale(scale).setDepth(p.y+1);
+    }
     for(let index=0;index<2;index++)this.createStation(index);
     for(let i=0;i<12;i++){const p=project(BOOT_CASH);this.bootstrap.push(this.add.image(p.x+(i%3-1)*14,p.y-Math.floor(i/3)*5,ASSETS.cash).setScale(.9).setDepth(p.y+i*.01));}
-    const label=(at:Vec2,text:string,color='#fffbe3')=>{const p=project(at);return this.add.text(p.x,p.y,text,{...TEXT,color,fontSize:'12px',backgroundColor:'#4b674acc',padding:{x:9,y:5}}).setOrigin(.5,0).setDepth(p.y+1);};
+    const label=(at:Vec2,text:string,color='#fffbe3')=>{const p=project(at);return this.add.text(p.x,p.y,text,{...TEXT,color,fontSize:'12px',backgroundColor:'#4d6952ed',padding:{x:9,y:5}}).setOrigin(.5,0).setDepth(p.y+1);};
     this.cornLabel=label({x:21,z:1.2},'玉 米 田');
     this.coopLabel=label({x:10,z:2.5},'鸡舍 · 6 只');
     this.feedText=label({x:15.5,z:4.5},'喂料 · 0 / 120','#ffe1a0');
     this.groundText=label({x:9,z:10.8},'新鲜鸡蛋 · 0');
     const fp=project(FEED);this.add.ellipse(fp.x,fp.y,67,31,0xffd46f,.14).setStrokeStyle(2,0xffe4a3,.8).setDepth(-1);
     this.add.text(fp.x,fp.y-2,'↓ 喂料',{...TEXT,fontSize:'12px',color:'#ffe2a2'}).setOrigin(.5).setDepth(fp.y-10);
-    this.investmentShape=this.add.graphics();this.investmentText=this.add.text(0,-3,'',{...TEXT,fontSize:'20px',stroke:'#306959',strokeThickness:3}).setOrigin(.5);
+    this.investmentShape=this.add.graphics();this.investmentText=this.add.text(0,-3,'',{...TEXT,fontSize:'20px',stroke:'#716342',strokeThickness:3}).setOrigin(.5);
     this.investmentName=this.add.text(0,30,'',{...TEXT,fontSize:'13px'}).setOrigin(.5,0);
     this.investment=this.add.container(0,0,[this.investmentShape,this.investmentText,this.investmentName]);
     this.pathView=this.add.graphics().setDepth(-.5);
-    this.goalRing=this.add.ellipse(0,0,48,23,0x67e4ce,.15).setStrokeStyle(2,0x93f9db,.7).setDepth(-.1);
-    this.goalArrow=this.add.text(0,0,'↓',{fontFamily:'Arial',fontSize:'49px',fontStyle:'bold',color:'#95e8df',stroke:'#3e9697',strokeThickness:4}).setOrigin(.5,1).setDepth(5000);
+    this.goalRing=this.add.ellipse(0,0,48,23,0xf3d58b,.22).setStrokeStyle(2,0xfff1c4,.85).setDepth(-.1);
+    this.goalArrow=this.add.text(0,0,'↓',{fontFamily:'Arial',fontSize:'39px',fontStyle:'bold',color:'#ffe0a0',stroke:'#8a7450',strokeThickness:3}).setOrigin(.5,1).setDepth(5000);
     this.tractor=this.add.image(0,0,ASSETS.tractor).setOrigin(.5,.8).setScale(.8).setVisible(false);
     for(let i=0;i<5;i++)this.blades.push(this.add.image(0,0,'fx.star').setTint(0xc5d1be).setScale(.8).setVisible(false));
     for(let i=0;i<96;i++)this.freeFlights.push(this.add.image(0,0,ASSETS.egg).setVisible(false).setDepth(6000));
@@ -131,9 +149,9 @@ export class FarmScene extends Phaser.Scene {
   screenToGround(clientX:number,clientY:number):Vec2 {const rect=this.game.canvas.getBoundingClientRect();const p=this.cameras.main.getWorldPoint((clientX-rect.left)*this.scale.width/rect.width,(clientY-rect.top)*this.scale.height/rect.height);return unproject(p.x,p.y);}
   createStation(index:number):void {
     const car=index===0,center=project(car?{x:9.5,z:13.5}:{x:21.5,z:17.5});
-    const table=this.add.image(0,0,ASSETS.counter).setOrigin(.5,105/180).setScale(.83);
+    const table=this.add.image(0,0,ASSETS.counter).setOrigin(.5,176/230).setScale(.83);
     const root=this.add.container(center.x,center.y,[table]).setDepth(center.y+10);
-    const stock:Phaser.GameObjects.Image[]=[];for(let i=0;i<24;i++){const image=this.add.image(-30+(i%3)*11,-39-Math.floor(i/3)*6,ASSETS.eggUnit).setScale(.58).setVisible(false);root.add(image);stock.push(image);}
+    const stock:Phaser.GameObjects.Image[]=[];for(let i=0;i<24;i++){const image=this.add.image(-30+(i%3)*11,-27-Math.floor(i/3)*6,ASSETS.eggUnit).setScale(.58).setVisible(false);root.add(image);stock.push(image);}
     const supply=project(zone(car?'car_supply':'walk_supply'));
     const g=this.add.graphics().setDepth(-1);
     const points=[{x:supply.x-42,y:supply.y},{x:supply.x,y:supply.y-22},{x:supply.x+42,y:supply.y},{x:supply.x,y:supply.y+22}];
@@ -168,7 +186,7 @@ export class FarmScene extends Phaser.Scene {
     const elapsed=Math.min(delta/1000,.167),w=this.ports.world();
     this.frames++;if(_time-this.fpsAt>=1000){this.renderedFps=Math.round(this.frames*1000/(_time-this.fpsAt));this.frames=0;this.fpsAt=_time;}
     if(!this.ports.paused()){this.accumulator+=elapsed;let n=0;while(this.accumulator>=DT&&n<5){stepWorld(w,screenDirection(this.ports.movement().x,this.ports.movement().z));for(const e of w.events)this.flight(e);this.accumulator-=DT;n++;}}else this.accumulator=0;
-    this.mapCamera.update();this.refreshActors();this.chapterView.update(w);this.bakeryView.update(w);this.orderBoard.update(w);
+    this.mapCamera.update();frameMeadow(this,this.meadow);this.refreshActors();this.chapterView.update(w);this.bakeryView.update(w);this.orderBoard.update(w);
     for(const a of [w.player,...w.workers])this.actors.get(a.id)!.update(a,w);
     this.crops.forEach((v,i)=>{const ready=w.crops[i].readyAt<=w.time;v.setVisible(true).setAlpha(ready?1:.65).setScale(ready?.52:.13+Math.max(0,1-(w.crops[i].readyAt-w.time)/6)*.2).setTint(ready?0xffffff:0x9abc67);});
     this.eggs.forEach((v,i)=>v.setVisible(i<w.ground.items.egg));
@@ -188,9 +206,9 @@ export class FarmScene extends Phaser.Scene {
       v.cars.forEach((car,j)=>{const at=i===0?{x:4.1,z:13-j*3.6-arriving*3.6}:{x:21+j*1.15+arriving*1.15,z:20.2};const p=project(at);car.setVisible(s.enabled).setPosition(p.x,p.y).setDepth(p.y+2);if(i===0)car.setTexture(`vehicle.car.${['red','gold','blue','plum'][(j+s.serial)%4]}`);});
     }
     const u=nextUpgrade(w);this.investment.setVisible(!!u);
-    if(u){const p=project(u.position),progress=u.paid/u.cost;this.investment.setPosition(p.x,p.y).setDepth(p.y+2);const g=this.investmentShape;g.clear().fillStyle(0x389575,.25).fillPoints([{x:-55,y:0},{x:0,y:-28},{x:55,y:0},{x:0,y:28}],true).lineStyle(3,w.wallet.cash?0x81efdb:0xe7e8c6,.9).strokePoints([{x:-55,y:0},{x:0,y:-28},{x:55,y:0},{x:0,y:28}],true);if(progress>0)g.fillStyle(0x68dab8,.55).fillEllipse(0,0,95*progress,40*progress);this.investmentText.setText(`$ ${u.cost-u.paid}`);this.investmentName.setText(({car_counter:'汽车柜台',harvest_team:'收割小队',car_clerk:'搬蛋店员',walk_counter:'步行柜台',walk_expansion:'柜台扩建',harvester:'收割机',walk_clerk:'第二位店员'}as Record<string,string>)[u.id]??u.label??u.id);}
-    const goal=getGoal(w),gp=project(goal.target);this.goalArrow.setPosition(gp.x,gp.y-37-Math.sin(w.time*4)*6);this.goalRing.setPosition(gp.x,gp.y).setScale(1+Math.sin(w.time*4)*.07);
-    this.pathView.clear();if(w.navigationTarget){this.pathView.lineStyle(2,0xd6f6d1,.5);let previous=project(w.player.position);for(const p of w.player.path){const next=project(p);this.pathView.lineBetween(previous.x,previous.y,next.x,next.y);previous=next;}}
+    if(u){const p=project(u.position),progress=u.paid/u.cost;this.investment.setPosition(p.x,p.y).setDepth(p.y+2);const g=this.investmentShape;g.clear().fillStyle(0xe3bc71,.3).fillPoints([{x:-55,y:0},{x:0,y:-28},{x:55,y:0},{x:0,y:28}],true).lineStyle(3,w.wallet.cash?0xffe5aa:0xe7e8c6,.9).strokePoints([{x:-55,y:0},{x:0,y:-28},{x:55,y:0},{x:0,y:28}],true);if(progress>0)g.fillStyle(0xf2d58c,.6).fillEllipse(0,0,95*progress,40*progress);this.investmentText.setText(`$ ${u.cost-u.paid}`);this.investmentName.setText(({car_counter:'汽车柜台',harvest_team:'收割小队',car_clerk:'搬蛋店员',walk_counter:'步行柜台',walk_expansion:'柜台扩建',harvester:'收割机',walk_clerk:'第二位店员'}as Record<string,string>)[u.id]??u.label??u.id);}
+    const goal=getGoal(w),gp=project(goal.target);this.goalArrow.setPosition(gp.x,gp.y-37-(this.reducedMotion?0:Math.sin(w.time*4)*5));this.goalRing.setPosition(gp.x,gp.y).setScale(1+(this.reducedMotion?0:Math.sin(w.time*4)*.05));
+    this.pathView.clear();if(w.navigationTarget){this.pathView.lineStyle(2,0xffefd1,.7);let previous=project(w.player.position);for(const p of w.player.path){const next=project(p);this.pathView.lineBetween(previous.x,previous.y,next.x,next.y);previous=next;}}
     this.tractor.setVisible(w.machine.active);for(const b of this.blades)b.setVisible(w.machine.active);
     if(w.machine.active){const p=project(w.machine.position);this.tractor.setPosition(p.x,p.y).setDepth(p.y+11);this.blades.forEach((b,i)=>b.setPosition(p.x-45+i*23,p.y+12+(i-2)*4).setRotation(w.time*9).setDepth(p.y+12));}
     for(let i=this.flights.length-1;i>=0;i--){const f=this.flights[i];f.t+=this.ports.paused()?0:elapsed;if(f.t<0)continue;const t=Math.min(1,f.t/f.duration),ease=t*t*(3-2*t);f.image.setPosition(Phaser.Math.Linear(f.from.x,f.to.x,ease),Phaser.Math.Linear(f.from.y,f.to.y,ease)-Math.sin(t*Math.PI)*(f.star?20:55)).setAlpha(f.star?1-t:1);if(f.star)f.image.rotation+=elapsed*5;if(t===1){f.image.setVisible(false).setAngle(0);this.freeFlights.push(f.image);this.flights.splice(i,1);}}

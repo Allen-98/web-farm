@@ -1,6 +1,6 @@
 {
   "name": "web-farm",
-  "version": "0.2.0",
+  "version": "0.3.3",
   "private": true,
   "description": "田园小掌柜：Phaser 农场经营网页小游戏，包含三章生产链与雇员自动化。",
   "homepage": "https://zhaocai7.cn/games/farm/",

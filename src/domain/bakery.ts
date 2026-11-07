@@ -30,7 +30,7 @@ export function bakeryMode(w:World):string {
   }
   if(has(w,'cake_stall')&&a.bag.items.cake&&near(a.position,p.cakeSupply))return 'cake-supply';
   if(b.pendingCash&&near(a.position,p.cash))return 'cake-cash';
-  if(has(w,'wheat_field')&&!a.bag.items.egg&&!a.bag.items.flour&&!a.bag.items.cake&&!a.bag.items.gift&&(!w.navigationTarget||(w.navigationTarget.x>=43&&w.navigationTarget.x<=49&&w.navigationTarget.z<9))&&b.crops.some(c=>c.readyAt<=w.time&&near(a.position,c.position,1.15)))return 'wheat-harvest';
+  if(has(w,'wheat_field')&&!a.bag.items.egg&&!a.bag.items.flour&&!a.bag.items.cake&&!a.bag.items.gift&&(!w.navigationTarget||(w.navigationTarget.x>=config.field.x&&w.navigationTarget.x<=config.field.x+6&&w.navigationTarget.z>=config.field.z&&w.navigationTarget.z<config.field.z+7))&&b.crops.some(c=>c.readyAt<=w.time&&near(a.position,c.position,1.15)))return 'wheat-harvest';
   return '';
 }
 type Fx=(item:Item|'cash',n:number,from:Vec2,to:Vec2)=>void;
@@ -73,5 +73,5 @@ export function bakeryGoal(w:World):Omit<Goal,'stage'>|null {
   if(has(w,'oven')&&b.flour.items.flour)return result('取走磨好的面粉',`已有 ${b.flour.items.flour} 袋`,p.flourOutput);
   if(has(w,'mill')&&b.millInput.items.wheat>=12)return result('磨坊正在研磨','招聘麦农和烘焙师可自动运转',p.flourOutput);
   const crop=b.crops.filter(c=>c.readyAt<=w.time).sort((x,y)=>Math.hypot(x.position.x-a.position.x,x.position.z-a.position.z)-Math.hypot(y.position.x-a.position.x,y.position.z-a.position.z))[0];
-  return result('收割成熟的小麦','走过成熟小麦自动收割',crop?.position??{x:46,z:5});
+  return result('收割成熟的小麦','走过成熟小麦自动收割',crop?.position??{x:config.field.x+3,z:config.field.z+3});
 }

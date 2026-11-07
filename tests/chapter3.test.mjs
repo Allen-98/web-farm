@@ -16,7 +16,7 @@ test('three chapters and recruited staff sustain cakes, gifts and bank deposits 
   const w=createWorld();drive(w,3600,w=>w.upgrades.slice(0,24).every(u=>u.unlocked),true);
   assert.equal(w.workers.length,12);assert.ok(w.bakery.sold>=0);const before={sold:w.bakery.sold,packed:w.chapter.packed,deposits:w.bank.deposited,ovens:w.logistics.eggToOven};
   // Stop the player on empty ground so all further baking and deposits are employee work.
-  navigate(w,{x:41,z:16});for(let i=0;i<18000;i++)stepWorld(w);
+  navigate(w,{x:40,z:17.5});for(let i=0;i<18000;i++)stepWorld(w);
   assert.ok(w.bakery.sold>before.sold,JSON.stringify({b:w.bakery,workers:w.workers}));
   assert.ok(w.chapter.packed>before.packed);assert.ok(w.bank.deposited>before.deposits);assert.ok(w.logistics.eggToOven>before.ovens);
   assert.equal(w.wallet.cash,0);validateWorld(w);

@@ -1,6 +1,8 @@
 node_modules/
 .vite/
 *.log
+__pycache__/
+*.py[cod]
 
 # Local history, reference-video analysis, and personal verification records.
 backups/
@@ -10,6 +12,9 @@ verification/*
 !verification/playtest.html
 !verification/playtest.ts
 !verification/*-checkpoints.json
+!verification/deployed-0.3.3.md
+verification/trace-compact.mjs
+verification/verify-0.3.3.mjs
 
 # Local configuration, credentials, and release archives.
 .env

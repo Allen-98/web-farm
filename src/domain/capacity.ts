@@ -1,5 +1,6 @@
 import capacityConfig from '../content/capacity.json' with {type:'json'};
 import type {World,Actor} from './world.ts';
+import {cartFactor} from './dispatch.ts';
 
 /** Engine-independent, cumulative production upgrades. Base tuning remains save compatible. */
 export const capacityUpgrades=capacityConfig.upgrades;
@@ -12,9 +13,8 @@ export function farmCapacity(w:World){
 }
 export function workerCapacity(w:World,a:Actor):number {
   const f=farmCapacity(w);
-  if(a.job==='haul'||a.job==='harvest')return 20*(f.cornLevel+1);
-  if(['car_counter','walk_counter','egg_courier','packer','baker'].includes(a.job))return 24*(f.coopLevel+1);
-  return a.job==='wheat_farmer'?32:24;
+  const base=a.job==='haul'||a.job==='harvest'?20*(f.cornLevel+1):['car_counter','walk_counter','egg_courier','packer','baker'].includes(a.job)?24*(f.coopLevel+1):a.job==='wheat_farmer'?32:24;
+  return base*cartFactor(w,a);
 }
 export function applyCapacity(w:World):void {
   const f=farmCapacity(w);

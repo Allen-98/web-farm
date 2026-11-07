@@ -8,8 +8,8 @@ export class OrderBoardView {
   stacks:Phaser.GameObjects.Image[];
   constructor(scene:Phaser.Scene){
     const p=project(ORDER_POINT);this.root=scene.add.container(p.x,p.y).setDepth(p.y+8);
-    const g=scene.add.graphics();g.fillStyle(0xd9e4b2,.35).fillPoints([{x:-48,y:0},{x:0,y:-24},{x:48,y:0},{x:0,y:24}],true).lineStyle(2,0xfff4cc,.95).strokePoints([{x:-48,y:0},{x:0,y:-24},{x:48,y:0},{x:0,y:24}],true);
-    g.fillStyle(0x866845).fillRect(-30,-85,7,69).fillRect(23,-85,7,69).fillStyle(0x597852).fillRoundedRect(-42,-95,84,55,6).lineStyle(3,0xb8ad77).strokeRoundedRect(-42,-95,84,55,6);
+    const g=scene.add.graphics();g.fillStyle(0xe9d8ab,.45).fillPoints([{x:-48,y:0},{x:0,y:-24},{x:48,y:0},{x:0,y:24}],true).lineStyle(2,0xfff4cc,.95).strokePoints([{x:-48,y:0},{x:0,y:-24},{x:48,y:0},{x:0,y:24}],true);
+    g.fillStyle(0xae845a).fillRect(-30,-85,7,69).fillRect(23,-85,7,69).fillStyle(0x64806a).fillRoundedRect(-42,-95,84,55,6).lineStyle(3,0xe0c695).strokeRoundedRect(-42,-95,84,55,6);
     const title=scene.add.text(0,-78,'乡间订单',{fontFamily:'Microsoft YaHei',fontSize:'13px',color:'#fff4d0',fontStyle:'bold'}).setOrigin(.5);
     this.text=scene.add.text(0,4,'交货区',{fontFamily:'Microsoft YaHei',fontSize:'11px',color:'#fff9db',stroke:'#56724b',strokeThickness:3,align:'center'}).setOrigin(.5);
     this.root.add([g,title,this.text]);

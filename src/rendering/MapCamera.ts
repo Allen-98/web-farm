@@ -14,10 +14,10 @@ export class MapCamera {
   }
   toggle():void{if(this.overview)this.follow();else this.fit();}
   fit():void {
-    this.overview=true;const s=this.scene,w=s.ports.world(),maxX=unlocked(w,'bakery_land')?60.5:unlocked(w,'market_land')?40.5:25;
+    this.overview=true;const s=this.scene,w=s.ports.world(),regions=unlocked(w,'bakery_land')?3:unlocked(w,'market_land')?2:1;
     const f=overviewFrame(s.scale.width,s.scale.height,w.player.position);
     s.cameras.main.stopFollow().setZoom(f.zoom).centerOn(f.x,f.y);
-    this.signature=`${s.scale.width}/${s.scale.height}/${maxX}`;this.present();
+    this.signature=`${s.scale.width}/${s.scale.height}/${regions}`;this.present();
   }
   zoomBy(factor:number):void {
     const c=this.scene.cameras.main;c.setZoom(clampZoom(c.zoom*factor));
@@ -30,8 +30,8 @@ export class MapCamera {
   }
   resize():void {if(this.overview)this.fit();else this.follow();}
   update():void {
-    const s=this.scene,w=s.ports.world(),maxX=unlocked(w,'bakery_land')?60.5:unlocked(w,'market_land')?40.5:25;
-    if(this.overview&&this.signature!==`${s.scale.width}/${s.scale.height}/${maxX}`)this.fit();
+    const s=this.scene,w=s.ports.world(),regions=unlocked(w,'bakery_land')?3:unlocked(w,'market_land')?2:1;
+    if(this.overview&&this.signature!==`${s.scale.width}/${s.scale.height}/${regions}`)this.fit();
   }
   present():void {
     const zoom=this.scene.cameras.main.zoom;

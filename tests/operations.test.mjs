@@ -37,7 +37,7 @@ test('facility upgrades charge once, enforce levels, retain inventories and pres
 });
 
 test('existing employees complete a real mixed order without player input or stock grants, settling exactly once',()=>{
-  const w=world();navigate(w,{x:41,z:16});const offer=orderOffers(w)[1];assert.ok(offer.requires.egg&&offer.requires.gift&&offer.requires.cake);
+  const w=world();navigate(w,{x:40,z:17.5});const offer=orderOffers(w)[1];assert.ok(offer.requires.egg&&offer.requires.gift&&offer.requires.cake);
   assert.equal(acceptOrder(w,offer.id),true);assert.equal(acceptOrder(w,offer.id),false);assert.equal(claimOrder(w),0);
   for(let i=0;i<600/DT&&!orderReady(w);i++){stepWorld(w);if(i%300===0)validateWorld(w);}
   assert.equal(orderReady(w),true,JSON.stringify({order:w.orders.active,workers:w.workers.map(a=>({job:a.job,task:a.task,bag:a.bag.items,position:a.position}))}));
@@ -71,7 +71,7 @@ test('an accepted contract remains unchanged when later facilities open',()=>{
 });
 
 test('timely delivered rush bonuses survive late collection and repeated contracts scale at five completions',()=>{
-  const w=world();navigate(w,{x:41,z:16});const offer=orderOffers(w)[2];acceptOrder(w,offer.id);
+  const w=world();navigate(w,{x:40,z:17.5});const offer=orderOffers(w)[2];acceptOrder(w,offer.id);
   for(let i=0;i<200/DT&&!orderReady(w);i++)stepWorld(w);
   assert.ok(orderReady(w));assert.ok(w.orders.active.readyAt-w.orders.active.acceptedAt<240);
   advance(w,260);assert.equal(claimOrder(w),offer.reward+offer.bonus);validateWorld(w);

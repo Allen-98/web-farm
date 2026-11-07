@@ -1,3 +1,4 @@
+import {withoutMapState,withoutPositions} from './map-state.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -14,8 +15,8 @@ const advance=(w,seconds)=>{for(let i=0;i<seconds/DT;i++)stepWorld(w);};
 test('v3 save migration preserves every economic value and keeps the original backup',()=>{
   const source=structuredClone(old.baking),before=structuredClone(source),w=migrateWorld(source);
   assert.deepEqual(source,before);
-  const {version,upgrades,orders,...rest}=w,{version:oldVersion,upgrades:oldUpgrades,...oldRest}=before;
-  assert.deepEqual(rest,oldRest);assert.deepEqual(upgrades.slice(0,24),oldUpgrades);
+  const {version,upgrades,orders,dispatch,telemetry,...rest}=w,{version:oldVersion,upgrades:oldUpgrades,...oldRest}=before;
+  assert.deepEqual(withoutMapState(rest),withoutMapState(oldRest));assert.deepEqual(withoutPositions(upgrades.slice(0,24)),withoutPositions(oldUpgrades));
   assert.ok(upgrades.slice(24).every(u=>!u.unlocked&&u.paid===0));validateWorld(w);
   const raw=JSON.stringify({schemaVersion:1,configVersion:oldVersion,world:source}),data=new Map([['farm-and-flow.save.v1',raw]]);
   globalThis.localStorage={getItem:k=>data.get(k)??null,setItem:(k,v)=>data.set(k,v),removeItem:k=>data.delete(k)};
@@ -38,7 +39,7 @@ test('capacity purchases charge once, preserve stocks and existing production cl
 
 test('normal automated operation produces substantially more corn and eggs after expansion',()=>{
   const base=migrateWorld(structuredClone(old.baking)),expanded=migrateWorld(structuredClone(checkpoints.expanded));
-  function measure(w){navigate(w,{x:41,z:16});advance(w,120);const before={...w.stats};advance(w,180);validateWorld(w);return {corn:w.stats.harvested-before.harvested,eggs:w.stats.produced-before.produced};}
+  function measure(w){navigate(w,{x:40,z:17.5});advance(w,120);const before={...w.stats};advance(w,180);validateWorld(w);return {corn:w.stats.harvested-before.harvested,eggs:w.stats.produced-before.produced};}
   const baseline=measure(base),upgraded=measure(expanded);
   assert.ok(upgraded.corn>baseline.corn*1.4,JSON.stringify({baseline,upgraded}));
   assert.ok(upgraded.eggs>baseline.eggs*1.4,JSON.stringify({baseline,upgraded}));
@@ -52,7 +53,7 @@ test('expanded output never overflows or consumes feed when the egg area is full
   for(const source of sources)transferItems(source,w.ground,'egg',w.ground.capacity-w.ground.items.egg);
   assert.equal(w.ground.items.egg,w.ground.capacity);validateWorld(w);
   // Keep all actors still for one frame. Their transfer credits cannot reach a whole item.
-  for(const a of w.workers){a.credit=0;a.position={x:41,z:16};a.path=[];}
+  for(const a of w.workers){a.credit=0;a.position={x:40,z:17.5};a.path=[];}
   const feed=w.feed.items.corn,produced=w.stats.produced;stepWorld(w);
   assert.equal(w.ground.items.egg,720);assert.equal(w.feed.items.corn,feed);assert.equal(w.stats.produced,produced);validateWorld(w);
 });

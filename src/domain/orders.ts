@@ -45,6 +45,7 @@ export function claimOrder(w:World):number {
   for(const item of TRADE_ITEMS)w.orders.delivered[item]+=a.stock.items[item];
   incomeAccount(w).cash+=reward;w.stats.earned+=reward;w.stats.collected+=reward;
   w.orders.revenue+=reward;w.orders.completed++;w.orders.serial++;w.orders.active=null;
+  w.telemetry.pendingRevenue+=reward;
   return reward;
 }
 export function validateOrders(w:World):void {

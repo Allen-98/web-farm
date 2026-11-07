@@ -1,6 +1,6 @@
 ﻿param([switch]$NoBrowser)
 $ErrorActionPreference='Stop'
-$previewUrl='http://127.0.0.1:8793/verification/playtest.html?checkpoint=operations'
+$previewUrl='http://127.0.0.1:8793/verification/playtest.html?checkpoint=dispatch'
 $previewReady=$false
 try { $previewPage=Invoke-WebRequest $previewUrl -UseBasicParsing -TimeoutSec 1; $previewReady=$previewPage.Content.Contains('/verification/playtest.ts') } catch { }
 if (-not $previewReady) {

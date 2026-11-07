@@ -1,0 +1,14 @@
+import fs from 'node:fs';
+import {migrateWorld,stepWorld,validateWorld,navigate,DT,purchaseUpgrade} from '../src/domain/world.ts';
+import {configureWorker,setPolicy,setFloor} from '../src/domain/dispatch.ts';
+import {acceptOrder,orderOffers} from '../src/domain/orders.ts';
+import {productionReport} from '../src/domain/telemetry.ts';
+const previous=JSON.parse(fs.readFileSync(new URL('./operations-checkpoints.json',import.meta.url)));
+const w=migrateWorld(structuredClone(previous.operations));navigate(w,{x:27,z:12});
+for(let i=0;i<65/DT;i++)stepWorld(w);
+const checkpoints={dispatch:structuredClone(w)};
+for(const a of w.workers.filter(a=>['egg_courier','gift_courier','baker','cake_courier','wheat_farmer'].includes(a.job)))purchaseUpgrade(w,`cart_${a.id}_1`);
+configureWorker(w,'egg_courier','bakery','oven');setFloor(w,'oven',12);setPolicy(w,'orders');acceptOrder(w,orderOffers(w)[1].id);
+for(let i=0;i<20/DT;i++)stepWorld(w);validateWorld(w);checkpoints.dispatch_carts=w;
+fs.writeFileSync(new URL('./dispatch-checkpoints.json',import.meta.url),JSON.stringify(checkpoints));
+console.log(JSON.stringify({checkpoints:Object.keys(checkpoints),balance:w.bank.cash,report:productionReport(w).rows.map(f=>({id:f.id,utilization:f.utilization}))}));
